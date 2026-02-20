@@ -1,0 +1,17 @@
+# Build artifacts
+build/
+bin/
+lib/
+
+# LaTeX junk
+*.aux
+*.log
+*.toc
+*.out
+*.pdf
+*.fdb_latexmk
+*.fls
+
+# IDE junk
+.vscode/
+.idea/

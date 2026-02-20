@@ -1,0 +1,11 @@
+\chapter{Phase 2: Performance Engineering}
+
+\section{Week 3: CPU High-Performance Computing}
+Reorganization of memory from AoS (Array of Structures) to SoA (Structure of Arrays). Optimization of thread affinity using \texttt{OMP\_PLACES} and \texttt{OMP\_PROC\_BIND}.
+
+\section{Week 4: NVIDIA GPU Acceleration (CUDA)}
+\subsection{Kernel Optimization}
+Moving the D2Q9 kernel to the GTX 1650. Implementation of tiled streaming via Shared Memory to reduce Global Memory traffic.
+
+\subsection{Profiling \& Roofline Analysis}
+Using Nsight Compute to perform Roofline Analysis, determining if the kernel is Memory Bound or Compute Bound.

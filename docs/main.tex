@@ -1,0 +1,28 @@
+\documentclass[12pt,oneside]{book}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb} % For the Equilibrium and Physics Loss equations
+\usepackage{graphicx}
+\usepackage[plainpages=false, pdfpagelabels]{hyperref} % Add these options
+
+\title{LBM-PINN: High-Performance Thermal Simulation \\ \large Technical Roadmap}
+\author{William Lien Chin Wei}
+\date{February 2026}
+
+\begin{document}
+
+\pagenumbering{alph} % Start with alphabetic for front matter
+\maketitle
+
+\cleardoublepage
+\pagenumbering{roman} % Roman for TOC
+\tableofcontents
+
+\cleardoublepage
+\pagenumbering{arabic} % Arabic for the actual engineering content
+
+% Modular Chapters
+\include{chapters/01_foundation}
+\include{chapters/02_performance}
+\include{chapters/03_strategic_edge}
+
+\end{document}

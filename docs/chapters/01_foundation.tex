@@ -1,0 +1,18 @@
+\chapter{Phase 1: The Principal Foundation}
+
+\section{Week 1: Infrastructure \& Scaffolding}
+\subsection{Modern CMake Architecture}
+Implementation of \texttt{FetchContent} for GTest/Benchmark and definition of targets: \texttt{core\_lib}, \texttt{cpu\_backend}, and \texttt{gpu\_backend}.
+
+\subsection{RAII and Memory Management}
+Development of the \texttt{DeviceBuffer<T>} class for zero-leak \texttt{cudaMalloc} management. Implementation of 64-byte aligned allocators for AVX-512 compatibility.
+
+\section{Week 2: The Physics Core (D2Q9)}
+\subsection{Lattice Equilibrium}
+The equilibrium distribution is implemented as:
+\begin{equation}
+f_i^{eq}(\rho, \mathbf{u}) = \omega_i \rho \left( 1 + \frac{3(\mathbf{e}_i \cdot \mathbf{u})}{c^2} + \frac{9(\mathbf{e}_i \cdot \mathbf{u})^2}{2c^4} - \frac{3\mathbf{u}^2}{2c^2} \right)
+\end{equation}
+
+\subsection{Collision and Boundary Conditions}
+Implementation of the BGK Single Relaxation Time (SRT) model and interchangeable "Bounce-Back" vs "Zhu-He" objects via Dependency Injection.
