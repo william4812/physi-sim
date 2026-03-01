@@ -1,17 +1,31 @@
+# Prerequisites
+*.swp
+
 # Build artifacts
 build/
 bin/
 lib/
+*.o
+*.o.d
+*.a
+*.bin
+physi_sim
+physi_tests
 
-# LaTeX junk
-*.aux
-*.log
-*.toc
-*.out
-*.pdf
-*.fdb_latexmk
-*.fls
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+CMakeLists.txt.user
+cmake_install.cmake
+Makefile
+_deps/
+CTestTestfile.cmake
 
-# IDE junk
-.vscode/
-.idea/
+# LaTeX (Documentation junk)
+docs/*.aux
+docs/*.fdb_latexmk
+docs/*.fls
+docs/*.log
+docs/*.out
+docs/*.pdf
+docs/*.toc
