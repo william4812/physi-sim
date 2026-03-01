@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-//#include "LBMSolver.hpp"
+#include "LBMSolver.hpp"
 #include "MockBackend.hpp"
 
 // Test Case: Ensure the solver calls the backend phases exactly once per step
@@ -9,12 +9,12 @@ TEST(SolverLogicTest, IncrementsCountersCorrectly)
     auto mock_ptr = new MockBackend(); 
     std::unique_ptr<MockBackend> backend(mock_ptr);
     
-    //LBMSolver solver(std::move(backend));
+    LBMSolver solver(std::move(backend));
 
     // Execute 3 steps
     for(int i = 0; i < 3; ++i) 
     {
-    //    solver.step();
+        solver.step();
     }
 
     // Verify the hardware was called the correct number of times
