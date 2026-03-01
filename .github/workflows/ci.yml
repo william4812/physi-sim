@@ -1,0 +1,41 @@
+name: physi-sim CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      # This is the "Build Matrix" - it runs the pipeline twice simultaneously.
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      # GitHub Ubuntu runners have CMake/GCC, but installing gtest ensures tests compile
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake g++ libgtest-dev
+
+    - name: Configure CMake
+      # Generates the build files in the /build directory
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+
+    - name: Build Code
+      # Compiles your LBM mock solver and tests
+      run: cmake --build ${{github.workspace}}/build --config ${{matrix.build_type}} -j 4
+
+    - name: Run Tests
+      # Navigates to the build directory and runs your tests.
+      # Note: This will fail initially because your 'SolverLogicTest.IncrementsCountersCorrectly' is currently failing, which is exactly what CI is supposed to catch!
+      working-directory: ${{github.workspace}}/build
+      run: ctest -C ${{matrix.build_type}} --output-on-failure

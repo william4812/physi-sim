@@ -24,7 +24,8 @@ class IComputeBackend
      * @param lattice_size Total number of lattice nodes.
      * @note Uses [[nodiscard]] to ensure the caller handles allocation lifecycle. 
      */
-    [[nodiscard]] virtual void allocate(std::size_t lattice_size) = 0;
+    virtual void allocate(std::size_t lattice_size) = 0;
+    virtual void init(size_t width, size_t height) = 0;
 
     /** * @name Core Physics Operators
      * These methods define the primary LBM loop phases.
@@ -44,6 +45,8 @@ class IComputeBackend
      * This is memory-bandwidth bound; implementations must optimize for coalesced access.
      */
     virtual void stream() = 0;
+    
+    virtual void applyBoundaries() = 0;
     ///@}
 
     /**
