@@ -1,0 +1,28 @@
+name: physi-sim CD
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger only on version tags (e.g., v1.0.0)
+
+jobs:
+  deploy-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Optimized Binary
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ libgtest-dev
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          # This creates the "Artifact" on your GitHub Release page
+          files: build/physi_sim 
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
