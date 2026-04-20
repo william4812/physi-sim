@@ -12,7 +12,7 @@ class MockBackend : public IComputeBackend
     size_t lattice_size_{0};
 
   public:
-    //MockBackend() = default;
+    MockBackend() = default;
     // Audit counters for Unit Testing
     std::atomic<int> collision_count{0};
     std::atomic<int> stream_count{0};
@@ -37,8 +37,11 @@ class MockBackend : public IComputeBackend
     // Crucial for L6 Engineering: Validate data integrity
     void syncToHost(std::vector<double>& host_data) override 
     {
-        if (host_data.empty()) return; 
-        std::cout << "[Mock] Syncing zeroed-buffer to host for verification.\n";
+        if (host_data.empty()) 
+        {
+            std::cout << "[Mock] Syncing zeroed-buffer to host for verification.\n";
+            return;
+        }
     }
 
 };

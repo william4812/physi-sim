@@ -1,19 +1,29 @@
-#ifndef LBM_SOLVER_HPP
-#define LBM_SOLVER_HPP
+#pragma once
 
+#include "thermal/IThermalSolver.hpp"
 #include "MockBackend.hpp"
 
-class LBMSolver
+class LBMSolver : public IThermalSolver
 {
 public:
     LBMSolver(std::unique_ptr<MockBackend> backend) : m_backend(std::move(backend)) 
     {
     }
     
-    void step() 
+    void step(double dt, double dx) 
     {
        m_backend->collide();
        m_backend->stream();
+    }
+
+    std::vector<double> getTemperatureField() const 
+    {
+        std::vector<double> dVector{0.0};
+        return dVector;
+    }
+
+    void getResult() const
+    {
     }
 
 protected:
@@ -23,4 +33,3 @@ private:
  
 };
 
-#endif //LBM_SOLVER_HPP

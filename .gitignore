@@ -1,10 +1,15 @@
-# Prerequisites
+# Prerequisites & Editors
 *.swp
+*.swo
+.DS_Store
 
-# Build artifacts
+# Build artifacts (General)
 build/
 bin/
 lib/
+_deps/
+
+# Compiled Objects/Binaries
 *.o
 *.o.d
 *.a
@@ -18,14 +23,20 @@ CMakeFiles/
 CMakeLists.txt.user
 cmake_install.cmake
 Makefile
-_deps/
 CTestTestfile.cmake
+physi_tests[1]_include.cmake
+physi_tests[1]_tests.cmake
 
-# LaTeX (Documentation junk)
-docs/*.aux
-docs/*.fdb_latexmk
-docs/*.fls
-docs/*.log
-docs/*.out
-docs/*.pdf
-docs/*.toc
+# LaTeX (Recursive to catch subdirectories like docs/chapters/)
+**/*.aux
+**/*.fdb_latexmk
+**/*.fls
+**/*.log
+**/*.out
+**/*.toc
+**/*.pdf
+**/*.synctex.gz
+
+# Simulation Results (Keep your repo clean of large data)
+*.vtk
+*.csv

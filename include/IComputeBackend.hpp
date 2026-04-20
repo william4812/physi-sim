@@ -1,5 +1,4 @@
-#ifndef ICOMPUTE_BACKEND_HPP
-#define ICOMPUTE_BACKEND_HPP
+#pragma once
 
 #include <vector>
 #include <memory>
@@ -12,6 +11,7 @@
 /**
  * @class IComputeBackend
  * @brief Abstract base class for CPU (AVX-512) and GPU (CUDA) implementations.
+ * for memory management and kernel execution (CPU vs. GPU).
  */
 class IComputeBackend 
 {
@@ -83,4 +83,3 @@ class IComputeBackend
     IComputeBackend() = default;
 };
 
-#endif // ICOMPUTE_BACKEND_HPP
