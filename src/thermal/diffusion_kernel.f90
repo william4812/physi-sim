@@ -57,10 +57,12 @@ contains
     end subroutine solve_tdma
 
     ! 1D Steady State Stencil Construction
-    subroutine thermal_1d_steady(n, dx, k, T_left, T_right, T_out) bind(C, name="thermal_1d_steady")
+    subroutine thermal_1d_steady(n, dx, k, T_left, T_right, T_in, T_out, res_max) bind(C, name="thermal_1d_steady")
         integer(c_int), intent(in), value :: n
         real(c_double), intent(in), value :: dx, k, T_left, T_right
+        real(c_double), intent(in)       :: T_in(n)
         real(c_double), intent(out)       :: T_out(n)
+        real(c_double), intent(out)       :: res_max ! Max relative error
 
         real(c_double) :: a(n), b(n), c(n), d(n)
         integer :: i
@@ -78,6 +80,14 @@ contains
         b(n) = 1.0; a(n) = 0.0; d(n) = T_right
 
         call solve_tdma(n, a, b, c, d, T_out)
+
+        ! 3. Calculate Convergence Criteria: Error_max_T / T
+        res_max = 0.0
+        do i = 1, n
+            if (abs(T_out(i)) > 1e-12) then
+                res_max = max(res_max, abs(T_out(i) - T_in(i)) / abs(T_out(i)))
+            end if
+        end do
     end subroutine thermal_1d_steady
 
 end module diffusion_mod
