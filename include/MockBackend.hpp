@@ -44,6 +44,11 @@ class MockBackend : public IComputeBackend
         }
     }
 
+    void compute(std::vector<double>& data, double alpha, double dt) override 
+    {
+        // For a mock, we can just leave this empty or add a print for debugging
+        std::cout << "[MockBackend] compute called on " << data.size() << " elements." << std::endl;
+    }
 };
 
 #endif //MOCK_BACKEND_HPP

@@ -1,0 +1,46 @@
+ \chapter{Thermal Diffusion: Numerical Implementation}
+
+\section{3D Heat Diffusion Equation}
+
+The differential form of the heat diffusion equation for an isotropic medium is:
+\begin{equation}
+    \rho c_p \frac{\partial T}{\partial t} = \frac{\partial}{\partial x}\left( k \frac{\partial T}{\partial x} \right) + \frac{\partial}{\partial y}\left( k \frac{\partial T}{\partial y} \right) + \frac{\partial}{\partial z}\left( k \frac{\partial T}{\partial z} \right) + \dot{q}
+\end{equation}
+
+We integrate the heat diffusion equation over the control volume $\Delta V = \Delta x \Delta y \Delta z$ centered at node $P$ (see Figure \ref{fig:3d_cv}):
+
+\begin{equation}
+    \int_{\Delta t} \iiint_V \rho c_p \frac{\partial T}{\partial t} dV dt = \int_{\Delta t} \oint_A (k \nabla T) \cdot d\mathbf{A} dt + \int_{\Delta t} \iiint_V \dot{q} dV dt
+\end{equation}
+
+Applying a fully implicit time-stepping scheme and evaluating face fluxes via central differencing, we arrive at the general discrete algebraic form:
+\begin{equation}
+    a_P T_P = a_W T_W + a_E T_E + a_S T_S + a_N T_N + a_B T_B + a_T T_T + b
+\end{equation}
+
+Where the coefficients are defined to maintain physical consistency across 3D space:
+\begin{itemize}
+    \item $a_E = \frac{k_e \Delta y \Delta z}{\delta x_{PE}}, \quad a_W = \frac{k_w \Delta y \Delta z}{\delta x_{WP}}$
+    \item $a_N = \frac{k_n \Delta x \Delta z}{\delta y_{PN}}, \quad a_S = \frac{k_s \Delta x \Delta z}{\delta y_{SP}}$
+    \item $a_T = \frac{k_t \Delta x \Delta y}{\delta z_{PT}}, \quad a_B = \frac{k_b \Delta x \Delta y}{\delta z_{BP}}$
+    \item $a_P^0 = \frac{\rho c_p \Delta V}{\Delta t}$ (Temporal inertia)[cite: 1]
+    \item $a_P = \sum a_{nb} + a_P^0 - S_P \Delta V$[cite: 1]
+    \item $b = S_u \Delta V + a_P^0 T_P^0$[cite: 1]
+\end{itemize}
+
+\section{Simplification: 1D Steady-State Conduction}
+To verify the TDMA kernel today, we collapse the 3D general form under two assumptions:
+\begin{enumerate}
+    \item \textbf{Steady-State:} $\frac{\partial T}{\partial t} \rightarrow 0$, therefore $a_P^0 = 0$[cite: 1].
+    \item \textbf{1D Heat Flow:} $\Delta y, \Delta z \rightarrow 1$ and $a_N, a_S, a_T, a_B = 0$[cite: 1].
+\end{enumerate}
+
+The system collapses to a tridiagonal form suitable for the TDMA solver:
+\begin{equation}
+    a_P T_P = a_W T_W + a_E T_E + b
+\end{equation}
+
+In our code implementation (\texttt{solver\_1d.f90}), this maps to the matrix indices $i$:
+\begin{equation}
+    \underbrace{-a_W}_{a_i} T_{i-1} + \underbrace{a_P}_{b_i} T_i + \underbrace{-a_E}_{c_i} T_{i+1} = \underbrace{b}_{d_i}
+\end{equation}

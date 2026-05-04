@@ -62,6 +62,7 @@ class IComputeBackend
      * reallocations during the simulation hot-path.
      */
     virtual void syncToHost(std::vector<double>& host_data) = 0;
+    virtual void compute(std::vector<double>& data, double alpha, double dt) = 0;
     ///@}
     
     /** * @name Resource Management (L6 Architectural Guards)
