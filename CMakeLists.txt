@@ -19,6 +19,7 @@ FetchContent_MakeAvailable(googletest)
 # This triggers the processing of src/thermal/CMakeLists.txt
 add_subdirectory(src/thermal)
 add_subdirectory(src/io)
+add_subdirectory(src/core)
 
 # 3. Main Executable
 add_executable(physi_sim src/main.cpp)
@@ -26,14 +27,21 @@ add_executable(physi_sim src/main.cpp)
 target_link_libraries(physi_sim PRIVATE 
     thermal_backend
     io_component
+    core_logic
 )
 
 # 4. Unit Test Infrastructure
 enable_testing()
-add_executable(physi_tests tests/test_solver.cpp)
+add_executable(physi_tests 
+    tests/test_solver.cpp
+    tests/test_io.cpp
+    tests/test_memory.cpp
+)
+
 target_link_libraries(physi_tests PRIVATE 
     thermal_backend
     io_component 
+    core_logic
     gtest_main
 )
 include(GoogleTest)
