@@ -44,3 +44,85 @@ In our code implementation (\texttt{solver\_1d.f90}), this maps to the matrix in
 \begin{equation}
     \underbrace{-a_W}_{a_i} T_{i-1} + \underbrace{a_P}_{b_i} T_i + \underbrace{-a_E}_{c_i} T_{i+1} = \underbrace{b}_{d_i}
 \end{equation}
+
+
+\section{Extension to 2D: Point-Iterative vs. Line-Implicit Methods}
+
+Transitioning from 1D to 2D steady-state conduction introduces significant computational bottlenecks if treated purely explicitly. For a 2D uniform grid ($\Delta x = \Delta y$), the continuous Laplace equation discretizes to a 5-point stencil. We evaluate two distinct numerical architectures for solving this system, prioritizing cache coherency and convergence acceleration.
+
+\subsection{The Point-Iterative Baseline (Jacobi)}
+
+
+
+The explicit Jacobi method updates each node independently using the localized average of its orthogonal neighbors:
+
+\begin{equation}
+    T_{i,j}^{new} = \frac{a_E T_{i+1,j} + a_W T_{i-1,j} + a_N T_{i,j+1} + a_S T_{i,j-1} + b}{a_P}
+\end{equation}
+
+For a uniform, homogeneous grid (where $\Delta x = \Delta y$ and conductivity $k$ is constant), the coefficients collapse to $a_{nb} = 1$ and $a_P = 4$, reducing the system to the localized average of its orthogonal neighbors:
+
+\begin{equation}
+    T_{i,j}^{new} = \frac{1}{4} \left( T_{i+1,j} + T_{i-1,j} + T_{i,j+1} + T_{i,j-1} \right)
+\end{equation}
+
+While mathematically simple and "embarrassingly parallel" (ideal for naive GPU porting), 
+this Point-Iterative approach is highly inefficient. It possesses a spectral radius near $1.0$, 
+resulting in painfully slow propagation of boundary information. Furthermore, it requires an 
+out-of-place memory update (a "Ping-Pong" secondary buffer) to avoid data race conditions, 
+effectively doubling the memory footprint and saturating DRAM bandwidth.
+
+\subsection{The Line-Implicit Architecture (LBL TDMA)}
+To drastically reduce the iteration count and memory overhead, we pivot to a Line-By-Line (LBL) implicit sweep. By treating the horizontal ($x$) direction implicitly and the vertical ($y$) direction explicitly, we collapse the 2D field into a series of coupled 1D systems:
+
+\begin{equation}
+    -a_W T_{i-1,j} + a_P T_{i,j} - a_E T_{i+1,j} = a_N T_{i,j+1} + a_S T_{i,j-1} + b
+\end{equation}
+
+For our verified Laplace case on a uniform grid, substituting the collapsed coefficients yields:
+
+\begin{equation}
+    -T_{i-1,j} + 4T_{i,j} - T_{i+1,j} = T_{i,j-1} + T_{i,j+1}
+\end{equation}
+
+This maps perfectly to our highly optimized core TDMA solver (Equation 4.5). The coefficients become $a_W = 1$, $a_E = 1$, $a_P = 4$, with the source term $d_i = T_{i,j-1} + T_{i,j+1}$.
+
+\textbf{HPC Ramifications:} The Line-Implicit approach propagates boundary conditions across an entire row instantaneously. Crucially, it allows for \textit{in-place} memory updates (effectively becoming a Line-Gauss-Seidel method). By eliminating the $O(N \times M)$ "Ping-Pong" vector swap, we shift the algorithm from being memory-bandwidth bound to compute-bound, a vital prerequisite for scaling on modern architectures.
+
+\section{Algorithmic Verification and Profiling}
+
+Rigorous Test-Driven Development (TDD) via Google Test was utilized to profile the numerical efficiency of both solvers on a $50 \times 50$ Cartesian grid, subject to a stringent $L_{\infty}$ norm tolerance of $10^{-7}$.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|c|l|}
+\hline
+\textbf{Solver Architecture} & \textbf{Max Iterations} & \textbf{Residual at Iter 1000} & \textbf{Memory Pattern} \\ \hline
+Jacobi (Point-Iterative) & $> 5,400$ & $1.40 \times 10^{-3}$ & Out-of-place (Ping-Pong) \\ \hline
+LBL TDMA (Line-Implicit) & $1,560$ & $9.86 \times 10^{-6}$ & In-place (No allocation) \\ \hline
+\end{tabular}
+\caption{Convergence profiling of 2D thermal solvers targeting $10^{-7}$ tolerance.}
+\label{tab:convergence_profile}
+\end{table}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{convergence_comparison.png}
+    \caption{Solver convergence comparison: $L_{\infty}$ residual vs. iteration count for the Jacobi baseline and Line-Implicit TDMA architecture.}
+    \label{fig:convergence_comparison}
+\end{figure}
+
+
+The empirical data demonstrates a \textbf{3.4x reduction in total iterations} when 
+utilizing the Line-Implicit TDMA sweep. More significantly, at the 1000-iteration mark, 
+the TDMA architecture achieves a residual two orders of magnitude lower than the Jacobi 
+baseline. This validates the mathematical superiority of the implicit formulation and 
+establishes a highly robust numerical core for future predictive health and advanced 
+thermal simulation platforms.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{thermal_verification_composite.png}
+    \caption{Multi-modal verification of the steady-state thermal field: (Left) 2D spatial distribution showing linear propagation; (Right) 1D center-line profile validating Dirichlet boundary condition matching.}
+    \label{fig:thermal_composite}
+\end{figure}

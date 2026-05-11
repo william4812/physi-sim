@@ -2,6 +2,7 @@
 
 add_library(core_logic STATIC
     Grid2D.cpp
+    solver.cpp
 )
 
 # Use the standardized variable for clarity

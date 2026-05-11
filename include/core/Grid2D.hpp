@@ -20,10 +20,26 @@ public:
     // Standard accessors (implementation in .cpp)
     double& at(int x, int y);
     const double& at(int x, int y) const;
+    inline double& operator()(int x, int y) noexcept {
+        return data_[(y * nx_) + x];
+    }
 
     // Fast raw access for solvers/benchmarks
     double* get_raw_data() noexcept;
     const double* get_raw_data() const noexcept;
+
+    // 1. For initialization: Returns the actual vector object
+    const std::vector<double>& get_raw_vector() const { return data_; }
+
+    // 2. For the Fortran Bridge: Returns the raw pointer to the memory
+    double* data() { return data_.data(); }
+    const double* data() const { return data_.data(); }
+
+    // 3. For the Ping-Pong Swap: Updates the internal buffer efficiently
+    void update_data(const std::vector<double>& next_data) 
+    {
+        data_ = next_data; // This performs a vector copy
+    }
 
     // Dimension getters - marked noexcept for compiler optimization
     int get_nx() const noexcept { return nx_; }

@@ -3,6 +3,7 @@
 add_library(io_component STATIC
     TelemetryWriter.cpp
     VTKWriter.cpp
+    CSVWriter.cpp
 )
 
 # Use the standardized variable for clarity

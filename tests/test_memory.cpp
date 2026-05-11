@@ -14,8 +14,3 @@ TEST(MemoryArchitectureTest, Flattened2DStrideIsCorrect) {
     // Verify the underlying memory layout
     EXPECT_EQ(grid.get_raw_data()[6], 42.0);
 }
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}

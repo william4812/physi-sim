@@ -36,6 +36,7 @@ add_executable(physi_tests
     tests/test_solver.cpp
     tests/test_io.cpp
     tests/test_memory.cpp
+    tests/test_physics.cpp
 )
 
 target_link_libraries(physi_tests PRIVATE 

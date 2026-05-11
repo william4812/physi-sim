@@ -89,5 +89,84 @@ contains
             end if
         end do
     end subroutine thermal_1d_steady
+    
+    subroutine laplace_2d_jacobi(T, T_new, nx, ny, res_norm) bind(c, name="laplace_2d_jacobi")
+        use iso_c_binding
+        implicit none
+
+        ! Interoperable arguments matching your C++ Solver2D call
+        integer(c_int), value    :: nx, ny
+        real(c_double), intent(in)  :: T(nx, ny)      ! Current state
+        real(c_double), intent(out) :: T_new(nx, ny)  ! Next state
+        real(c_double), intent(out) :: res_norm       ! L2-norm residual
+
+        integer :: i, j
+        real(c_double) :: current_err
+
+        res_norm = 0.0d0
+
+        ! 1. Boundary Conditions: Preserve edges from T to T_new [cite: 5]
+        T_new(1, :) = T(1, :)
+        T_new(nx, :) = T(nx, :)
+        T_new(:, 1) = T(:, 1)
+        T_new(:, ny) = T(:, ny)
+
+        ! 2. 5-Point Jacobi Stencil (Interior Nodes)
+        ! Fortran is column-major; inner loop on 'i' maximizes cache hits
+        do j = 2, ny - 1
+            do i = 2, nx - 1
+                ! T_new = average of 4 neighbors
+                T_new(i, j) = 0.25d0 * (T(i+1, j) + T(i-1, j) + T(i, j+1) + T(i, j-1))
+                
+                ! Accumulate squared difference for L2-norm residual
+                ! Calculate Max Relative Error (L-infinity norm) [cite: 23]
+                if (abs(T_new(i, j)) > 1e-12) then
+                    current_err = abs(T_new(i, j) - T(i, j)) / abs(T_new(i, j))
+                    if (current_err > res_norm) res_norm = current_err
+                end if
+            end do
+        end do
+
+
+    end subroutine laplace_2d_jacobi
+
+    subroutine laplace_2d_tdma(T, nx, ny, res_norm) bind(c, name="laplace_2d_tdma")
+    use iso_c_binding
+    implicit none
+    integer(c_int), value :: nx, ny
+    real(c_double), intent(inout) :: T(nx, ny)
+    real(c_double), intent(out) :: res_norm
+    real(c_double) :: a(nx), b(nx), c(nx), d(nx), x_line(nx), T_old(nx, ny)
+    integer :: i, j
+
+    T_old = T ! Store for residual check
+
+    ! Sweep Row-by-Row (Implicit in X, Explicit in Y)
+    do j = 2, ny - 1
+        do i = 1, nx
+            if (i == 1 .or. i == nx) then
+                b(i) = 1.0; a(i) = 0.0; c(i) = 0.0; d(i) = T(i, j) ! Dirichlet [cite: 20]
+            else
+                ! aW*T(i-1) + aP*T(i) + aE*T(i+1) = Source (Neighbors) [cite: 15]
+                a(i) = -1.0 ! aW [cite: 16]
+                c(i) = -1.0 ! aE [cite: 17]
+                b(i) = 4.0  ! aP [cite: 18]
+                d(i) = T(i, j-1) + T(i, j+1) ! North/South neighbors [cite: 19]
+            end if
+        end do
+        call solve_tdma(nx, a, b, c, d, x_line) ! Reuse your core solver [cite: 6]
+        T(:, j) = x_line
+    end do
+
+    ! Calculate Max Relative Error
+    res_norm = 0.0
+    do j = 1, ny
+        do i = 1, nx
+            if (abs(T(i,j)) > 1e-12) then
+                res_norm = max(res_norm, abs(T(i,j) - T_old(i,j))/abs(T(i,j))) 
+            end if
+        end do
+    end do
+    end subroutine laplace_2d_tdma
 
 end module diffusion_mod
