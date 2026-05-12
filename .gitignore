@@ -49,3 +49,5 @@ physi_tests[1]_tests.cmake
 *.vtk
 *.csv
 Testing/
+__pycache__/
+*.pyc
