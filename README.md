@@ -72,9 +72,3 @@ cd build && ctest --output-on-failure
 * CMake (>= 3.10)
 * G++ (Standard 17)
 * GTest (Google Test Framework)
-
-### Build and Test
-```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-cd build && ctest --output-on-failure
