@@ -15,6 +15,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
+# Fetch nlohmann_json for configuration and security data handling
+FetchContent_Declare(
+  json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.11.3 
+)
+FetchContent_MakeAvailable(json)
+
 # 2. Modular Subdirectories
 # This triggers the processing of src/thermal/CMakeLists.txt
 add_subdirectory(src/thermal)
@@ -37,6 +45,7 @@ add_executable(physi_tests
     tests/test_io.cpp
     tests/test_memory.cpp
     tests/test_physics.cpp
+    tests/test_config.cpp
 )
 
 target_link_libraries(physi_tests PRIVATE 

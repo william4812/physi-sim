@@ -1,0 +1,37 @@
+---
+- name: Build the physi-sim Development Factory
+  hosts: localhost
+  connection: local
+  become: true  # This is like saying "Use your Superpowers" (sudo)
+
+  tasks:
+    - name: 1. Update the System Library List
+      apt:
+        update_cache: yes
+
+    - name: 2. Install the 'Building Tools' (Compiler & CMake)
+      apt:
+        name:
+          - build-essential
+          - cmake
+          - gfortran
+        state: present
+
+    - name: 3. Install the 'Testing Tools' (Google Test)
+      apt:
+        name: libgtest-dev
+        state: present
+
+    - name: 4. Install the 'Security & Input Tools' (nlohmann-json)
+      # This supports your JPL/Anduril "Input Validation" goal
+      apt:
+        name: nlohmann-json3-dev
+        state: present
+
+    - name: 5. Install 'Visualization Tools' (VTK)
+      # This supports your Thermal Desktop/ParaView export goal
+      apt:
+        name: libvtk9-dev
+        state: present
+        update_cache: yes
+        install_recommends: no # Prevents pulling in conflicting optional dependencies
