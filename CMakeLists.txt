@@ -31,6 +31,7 @@ include_directories(include)
 add_subdirectory(src/thermal)
 add_subdirectory(src/io)
 add_subdirectory(src/core)
+add_subdirectory(src/solver)
 
 # 3. Main Executable
 add_executable(physi_sim src/main.cpp)
@@ -39,6 +40,7 @@ target_link_libraries(physi_sim PRIVATE
     thermal_backend
     io_component
     core_logic
+    solver_component
 )
 
 # 4. Unit Test Infrastructure
@@ -57,6 +59,7 @@ target_link_libraries(physi_tests PRIVATE
     io_component 
     core_logic
     gtest_main
+    solver_component
 )
 include(GoogleTest)
 gtest_discover_tests(physi_tests)
