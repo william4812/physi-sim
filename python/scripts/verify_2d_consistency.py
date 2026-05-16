@@ -45,16 +45,16 @@ def main():
 
         fig, axes = plt.subplots(1, 3, figsize=(18, 5))
         
-        im1 = axes[0].imshow(temp_2d_j, cmap='jet')
+        im1 = axes[0].imshow(temp_2d_j, cmap='jet', origin='lower')
         axes[0].set_title("Jacobi Solver Result")
         plt.colorbar(im1, ax=axes[0])
 
-        im2 = axes[1].imshow(temp_2d_t, cmap='jet')
+        im2 = axes[1].imshow(temp_2d_t, cmap='jet', origin='lower')
         axes[1].set_title("TDMA Solver Result")
         plt.colorbar(im2, ax=axes[1])
 
         # Diverging map for differences
-        im3 = axes[2].imshow(diff_2d, cmap='magma')
+        im3 = axes[2].imshow(diff_2d, cmap='magma', origin='lower')
         axes[2].set_title(f"Absolute Difference\nMax: {max_diff:.2e}")
         plt.colorbar(im3, ax=axes[2])
 
