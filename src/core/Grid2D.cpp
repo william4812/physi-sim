@@ -40,4 +40,4 @@ const double* Grid2D::get_raw_data() const noexcept
 }
 
 } // namespace core
-} // namespace physisim
+} // namespace physi_sim

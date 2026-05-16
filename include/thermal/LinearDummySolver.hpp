@@ -2,6 +2,7 @@
 
 #include "MockBackend.hpp"
 #include "thermal/IThermalSolver.hpp"
+#include <memory>
 #include <cstdint>
 
 constexpr uint64_t MAX_CNT = 100;
