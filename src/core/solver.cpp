@@ -88,4 +88,4 @@ double Solver2D::solve_laplace_tdma(Grid2D& grid,
 }
 
 } // namespace core
-} // namespace physisim
+} // namespace physi_sim

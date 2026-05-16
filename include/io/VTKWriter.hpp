@@ -1,20 +1,26 @@
 #pragma once
+#include <vector>
+#include <string>
 
-#include "io/IResultWriter.hpp"
+namespace physi_sim::io {
 
-namespace physi_sim::io
-{
-
-class VTKWriter : public IResultWriter
-{
+/**
+ * @brief Writes simulation fields to VTK format for visualisation.
+ *
+ * Standalone — no interface inheritance needed until a second
+ * writer implementation exists (Open/Closed: don't abstract prematurely).
+ */
+class VTKWriter {
 public:
-  VTKWriter() = default;
-    // Ensure this has a definition!
-  virtual ~VTKWriter() = default;
-  void write(const std::vector<double>& field,
-             const std::string& filename) override;
-  void write_2d(const double* field, 
-                int nx, int ny, const std::string& filename) override;
-}; // class VTKWriter
+    VTKWriter() = default;
+    virtual ~VTKWriter() = default;
+
+    void write(const std::vector<double>& field,
+               const std::string& filename);
+
+    void write_2d(const double* field,
+                  int nx, int ny,
+                  const std::string& filename);
+};
 
 } // namespace physi_sim::io

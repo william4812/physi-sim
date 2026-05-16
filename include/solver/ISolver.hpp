@@ -21,8 +21,7 @@
  *   touching Grid2D."
  */
 
-namespace physi_sim {
-namespace solver  {
+namespace physi_sim::solver {
 
 class ISolver {
 public:
@@ -57,5 +56,4 @@ public:
 enum class HardwareBackend { CPU, CUDA };
 enum class SolverType      { JACOBI, TDMA };
 
-} // namespace solver
-} // namespace physi_sim
+} // namespace physi_sim::solver

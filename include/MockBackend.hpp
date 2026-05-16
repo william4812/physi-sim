@@ -1,54 +1,43 @@
-#ifndef MOCK_BACKEND_HPP
-#define MOCK_BACKEND_HPP
-
-#include "IComputeBackend.hpp"
+#pragma once
 #include <iostream>
 #include <atomic>
+#include <vector>
 
-class MockBackend : public IComputeBackend 
-{
-  private:
-    size_t width_{0}, height_{0};
-    size_t lattice_size_{0};
-
-  public:
+/**
+ * @brief Mock hardware backend for unit testing LinearDummySolver.
+ *
+ * Standalone — no LBM interface inheritance.
+ * Audit counters allow tests to verify call counts.
+ */
+class MockBackend {
+public:
     MockBackend() = default;
-    // Audit counters for Unit Testing
+
     std::atomic<int> collision_count{0};
     std::atomic<int> stream_count{0};
 
-    // This MUST match IComputeBackend.hpp exactly
-    void allocate(std::size_t lattice_size) override {
+    void allocate(std::size_t lattice_size) {
         lattice_size_ = lattice_size;
         std::cout << "[Mock] Allocated " << lattice_size_ << " nodes.\n";
     }
-
-    void init(size_t width, size_t height) override 
-    {
-        width_ = width;
+    void init(size_t width, size_t height) {
+        width_  = width;
         height_ = height;
         std::cout << "[Mock] Initialized " << width << "x" << height << "\n";
     }
+    void collide()          { collision_count++; }
+    void stream()           { stream_count++;    }
+    void applyBoundaries()  {}
 
-    void collide() override { collision_count++; }
-    void stream() override { stream_count++; }
-    void applyBoundaries() override { /* No-op */ }
-    
-    // Crucial for L6 Engineering: Validate data integrity
-    void syncToHost(std::vector<double>& host_data) override 
-    {
-        if (host_data.empty()) 
-        {
-            std::cout << "[Mock] Syncing zeroed-buffer to host for verification.\n";
-            return;
-        }
+    void syncToHost(std::vector<double>& host_data) {
+        if (host_data.empty())
+            std::cout << "[Mock] Syncing zeroed-buffer to host.\n";
+    }
+    void compute(std::vector<double>& data, double alpha, double dt) {
+        std::cout << "[MockBackend] compute called on "
+                  << data.size() << " elements.\n";
     }
 
-    void compute(std::vector<double>& data, double alpha, double dt) override 
-    {
-        // For a mock, we can just leave this empty or add a print for debugging
-        std::cout << "[MockBackend] compute called on " << data.size() << " elements." << std::endl;
-    }
+private:
+    size_t width_{0}, height_{0}, lattice_size_{0};
 };
-
-#endif //MOCK_BACKEND_HPP
