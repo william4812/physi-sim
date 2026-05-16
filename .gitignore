@@ -51,3 +51,4 @@ physi_tests[1]_tests.cmake
 Testing/
 __pycache__/
 *.pyc
+.deps/
