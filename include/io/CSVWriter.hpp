@@ -1,3 +1,4 @@
+// TODO: migrate to TelemetryWriter — CSVWriter is redundant (tracked in cleanup)
 #pragma once
 #include <vector>
 #include <string>

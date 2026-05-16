@@ -7,7 +7,11 @@ using namespace physi_sim;
 
 TEST(ConfigTest, ManualParamCreation) {
     // TDD: Testing the 'Contract' directly with dummy data
-    core::SimulationParams params{-1.0, -1, "random"};
+    core::SimulationParams params{
+        .initial_temp   = -1.0,
+        .max_iterations = -1,
+        .solver_type    = "random"
+    };
 
     EXPECT_EQ(params.initial_temp, -1.0);
     EXPECT_EQ(params.max_iterations, -1);

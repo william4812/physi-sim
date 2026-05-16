@@ -60,4 +60,4 @@ private:
 };
 
 } // namespace core
-} // namespace physisim
+} // namespace physi_sim

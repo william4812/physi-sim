@@ -4,14 +4,20 @@
 namespace physi_sim::core {
 
 /**
- * First Principle: Plain Old Data (POD)
- * This struct is the 'Contract' between the IO layer and the Solver.
+ * @brief POD config struct — contract between IO layer and solver.
+ *
+ * Loaded by ConfigLoader from config.yaml.
+ * Passed to SolverFactory and SimStateMachine.
+ * All fields have safe defaults so partial configs work.
  */
-struct SimulationParams 
-{
-    double initial_temp = 0.0;
-    int max_iterations = 0;
-    std::string solver_type = "unknown";
+struct SimulationParams {
+    std::string solver_type    = "tdma";  // "jacobi" or "tdma"
+    std::string backend        = "cpu";   // "cpu" or "cuda"
+    int         grid_nx        = 64;      // interior points in x
+    int         grid_ny        = 64;      // interior points in y
+    double      tolerance      = 1e-7;    // L-inf convergence threshold
+    int         max_iterations = 10000;   // iteration cap
+    double      initial_temp   = 0.0;     // initial field value
 };
 
 } // namespace physi_sim::core
