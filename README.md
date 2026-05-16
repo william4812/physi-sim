@@ -33,7 +33,7 @@ A C++/Fortran hybrid simulation suite designed for high-fidelity thermal analysi
   <b>Figure 3: Field-to-Field Consistency Analysis.</b>
 </p>
 
-* **Metric:** Max Absolute Difference is strictly bounded at **$5.00 \times 10^{-4}$**.
+* **Metric:** Max Absolute Difference is strictly bounded at $5.00 \times 10^{-4}$.
 * **Reliability:** Proving the optimized TDMA solver matches the Jacobi baseline ensures numerical integrity for mission-critical applications.
 
 ## 3. Fundamental Physical Validation
@@ -57,7 +57,7 @@ A C++/Fortran hybrid simulation suite designed for high-fidelity thermal analysi
 
 ## Getting Started
 ### Prerequisites
-* CMake (>= 3.10)
+* CMake (>= 4.3.2)
 * G++ (Standard 17)
 * GTest (Google Test Framework)
 
@@ -66,9 +66,3 @@ A C++/Fortran hybrid simulation suite designed for high-fidelity thermal analysi
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 cd build && ctest --output-on-failure
-
-## Getting Started
-### Prerequisites
-* CMake (>= 3.10)
-* G++ (Standard 17)
-* GTest (Google Test Framework)
