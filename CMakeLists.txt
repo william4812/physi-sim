@@ -47,9 +47,9 @@ target_link_libraries(physi_sim PRIVATE
 enable_testing()
 add_executable(physi_tests
     # All existing tests — moved to unit/, content unchanged
-    tests/unit/test_memory.cpp
-    tests/unit/test_io.cpp
-    tests/unit/test_config.cpp
+    tests/unit/test_matrix_layout.cpp
+    tests/unit/test_vtk_writer.cpp
+    tests/unit/test_config_loader.cpp
     tests/unit/test_solver.cpp
     tests/unit/test_physics.cpp
     tests/unit/test_solver_factory.cpp
