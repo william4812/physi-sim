@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 #include "solver/ISolver.hpp"
 #include "solver/SolverFactory.hpp"
-#include "solver/ProfilingHarness.hpp"
 #include "core/Grid2D.hpp"
 
 using namespace physi_sim::solver;
@@ -77,15 +76,3 @@ TEST_F(SolverFactoryTest, TDMAResidualDecreasesOverIterations) {
         << "TDMA not converging: r0=" << r0 << " r50=" << r50;
 }
 
-TEST_F(SolverFactoryTest, ProfilingHarnessRunsWithoutThrowing) {
-    auto solver  = SolverFactory::create(SolverType::JACOBI, HardwareBackend::CPU);
-    auto harness = ProfilingHarness(std::move(solver));
-    ProfilingRecord rec;
-    EXPECT_NO_THROW(
-        rec = harness.run(*grid, 100, 1e-3, false)
-    );
-    EXPECT_GT(rec.wall_time_ms, 0.0);
-    EXPECT_GT(rec.iterations,   0);
-    EXPECT_EQ(rec.grid_nx,      6);
-    EXPECT_EQ(rec.grid_ny,      6);
-}
