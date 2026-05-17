@@ -1,5 +1,5 @@
 [![physi-sim CI](https://github.com/william4812/physi-sim/actions/workflows/ci.yml/badge.svg)](https://github.com/william4812/physi-sim/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-46%2F46%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-45%20passing-brightgreen)
 ![Language](https://img.shields.io/badge/language-C%2B%2B17%20%7C%20Fortran%2090%20%7C%20Python%203-blue)
 
 # Physi-Sim: Multi-Scale Conjugate Heat Transfer Engine
@@ -16,7 +16,7 @@ Designed to demonstrate HPC and embedded systems engineering depth: interface ab
 2. [Solver lifecycle — Finite State Machine](#2-solver-lifecycle--finite-state-machine)
 3. [Physics verification results](#3-physics-verification-results)
 4. [Multi-scale roadmap](#4-multi-scale-roadmap)
-5. [Test suite — 46 / 46 passing](#5-test-suite--46--46-passing)
+5. [Test suite — 45 / 45 passing](#5-test-suite--45--45-passing)
 6. [Language pipeline](#6-language-pipeline)
 7. [Getting started](#7-getting-started)
 
@@ -232,30 +232,39 @@ This test is the mathematical proof-of-confidence. If it passes, both physics mo
 | 0 | `feat/isolver-abstraction` | ISolver + SolverFactory + ProfilingHarness | ✅ merged |
 | 1 | `feat/solver-fsm` | SolverFSM — 22 GTests, thread-safe | ✅ merged |
 | 2 | `feat/fsm-harness-integration` | FSM wired into ProfilingHarness, `fsm_state` in CSV | 🔲 next |
-| 3 | `feat/concurrent-solver-runner` | `std::async` dispatch, concurrent wall-time proof | 🔲 |
-| 4 | `feat/fortran-bridge` | `extern "C"` bridge replaces C++ stencil copies | 🔲 |
-| 5 | `feat/cuda-stub` | `CudaThermalSolver` via `-DPHYSI_CUDA=ON` | 🔲 |
-| 6 | `feat/3d-physics` | 3D ADI conduction, NS FVM, P1 radiation | 🔲 |
-| 7 | `feat/multiscale-bridge` | `MesoBoltzmannSolver`, `ScaleManager`, Kn=0.05 TDD | 🔲 |
-| 8 | `docs/report` | CPU vs GPU profiling table, LaTeX writeup | 🔲 |
-
+| 3 | `refactor/test-layer-structure` | unit/integration/regression layers, 45 tests | ✅ merged |
+| 4 | `feat/concurrent-solver-runner` | `std::async` dispatch, concurrent wall-time proof | 🔲 |
+| 5 | `feat/fortran-bridge` | `extern "C"` bridge replaces C++ stencil copies | 🔲 |
+| 6 | `feat/cuda-stub` | `CudaThermalSolver` via `-DPHYSI_CUDA=ON` | 🔲 |
+| 7 | `feat/3d-physics` | 3D ADI conduction, NS FVM, P1 radiation | 🔲 |
+| 8 | `feat/multiscale-bridge` | `MesoBoltzmannSolver`, `ScaleManager`, Kn=0.05 TDD | 🔲 |
+| 9 | `docs/report` | CPU vs GPU profiling table, LaTeX writeup | 🔲 |
 ---
 
-## 5. Test suite — 46 / 46 passing
+## 5. Test suite — 45 / 45 passing
 
-```
-Total Test time (real) = 0.29 sec
-100% tests passed, 0 tests failed out of 46
+| Layer | Tests | A failure means |
+|-------|-------|-----------------|
+| unit | 40 | A class contract broke |
+| integration | 3 | The Fortran ABI seam broke |
+| regression | 2 | Physics drifted |
+
+**Run each layer independently:**
+
+```bash
+cd build
+ctest -L unit        --output-on-failure   # < 1 second
+ctest -L integration --output-on-failure
+ctest -L regression  --output-on-failure
+ctest                --output-on-failure   # full suite
 ```
 
-| # | Category | Tests | What it verifies |
-|---|----------|-------|-----------------|
-| 1 | Fortran ABI | 2 | `bind(C)` linkage correct, `double` precision matches across language boundary |
-| 2 | Fortran physics | 2 | Convergence to steady state, 1D linear profile vs analytical solution |
-| 3 | 2D physics | 2 | Jacobi convergence profile, TDMA sweep efficiency and residual decrease |
-| 4 | `SolverFactory` + `ProfilingHarness` | 11 | Factory contract, case-insensitive parse, unknown-type throws, harness pipeline end-to-end |
-| 5 | `SolverFSM` | 22 | All 5 states, all valid transitions, 9 invalid-transition throws with message content, concurrent read safety, 3-cycle reuse |
-| 6 | Memory / VTK / Config | 7 | 2D stride correctness, VTK header validity, JSON config load |
+**Run with ThreadSanitizer** (verifies FSM concurrent reads are race-free):
+```bash
+cmake -B build_tsan -DCMAKE_CXX_FLAGS="-fsanitize=thread" -DCMAKE_BUILD_TYPE=Debug
+cmake --build build_tsan -j$(nproc)
+cd build_tsan && ctest --output-on-failure -R ConcurrentStateReadsAreSafe
+```
 
 **Run the full suite:**
 
