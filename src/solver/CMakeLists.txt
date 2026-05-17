@@ -6,6 +6,7 @@ add_library(solver_component STATIC
     JacobiCPU.cpp
     TDMACPU.cpp
     ProfilingHarness.cpp
+    SolverFSM.cpp
 )
 
 # Propagate include directories cleanly to consumers

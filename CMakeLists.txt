@@ -52,6 +52,7 @@ add_executable(physi_tests
     tests/test_physics.cpp
     tests/test_config.cpp
     tests/test_solver_factory.cpp
+    tests/test_solver_fsm.cpp
 )
 
 target_link_libraries(physi_tests PRIVATE 
