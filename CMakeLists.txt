@@ -46,22 +46,27 @@ target_link_libraries(physi_sim PRIVATE
 # 4. Unit Test Infrastructure
 enable_testing()
 add_executable(physi_tests
-    # All existing tests — moved to unit/, content unchanged
+    # unit
     tests/unit/test_matrix_layout.cpp
     tests/unit/test_vtk_writer.cpp
     tests/unit/test_config_loader.cpp
-    tests/unit/test_solver.cpp
-    tests/unit/test_physics.cpp
+    tests/unit/test_backend_dispatch.cpp
     tests/unit/test_solver_factory.cpp
     tests/unit/test_solver_fsm.cpp
+
+    # integration
+    tests/integration/test_fortran_interop.cpp
+
+    # regression
+    tests/regression/test_convergence_baselines.cpp
 )
  
 target_link_libraries(physi_tests PRIVATE 
+    solver_component
+    core_logic
     thermal_backend
     io_component 
-    core_logic
     gtest_main
-    solver_component
 )
 include(GoogleTest)
 gtest_discover_tests(physi_tests)
