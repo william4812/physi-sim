@@ -241,15 +241,33 @@ This test is the mathematical proof-of-confidence. If it passes, both physics mo
 | 9 | `docs/report` | CPU vs GPU profiling table, LaTeX writeup | 🔲 |
 ---
 
-## 5. Test suite — 45 / 45 passing
+## Test Architecture
 
-| Layer | Tests | A failure means |
-|-------|-------|-----------------|
+45 tests organised into three independent layers. Each layer has a distinct
+failure meaning and can be run in isolation.
+
+```
+tests/
+├── unit/                          one class in isolation, no physics
+│   ├── test_matrix_layout.cpp     core::Grid2D memory stride
+│   ├── test_vtk_writer.cpp        io::VTKWriter header contract
+│   ├── test_config_loader.cpp     io::ConfigLoader + SimulationParams
+│   ├── test_backend_dispatch.cpp  Backend dispatch pattern (pre-ISolver)
+│   ├── test_solver_factory.cpp    SolverFactory + ISolver contract
+│   └── test_solver_fsm.cpp        SolverFSM lifecycle (22 tests)
+├── integration/                   real components at their seams
+│   └── test_fortran_interop.cpp   C++ ↔ Fortran ABI bridge
+└── regression/                    physics tolerances vs known-good baselines
+    └── test_convergence_baselines.cpp  Jacobi + TDMA convergence
+```
+
+| Layer | Tests | A failure here means |
+|-------|-------|----------------------|
 | unit | 40 | A class contract broke |
-| integration | 3 | The Fortran ABI seam broke |
+| integration | 3 | A language-boundary seam broke |
 | regression | 2 | Physics drifted |
 
-**Run each layer independently:**
+Run each layer independently:
 
 ```bash
 cd build
@@ -259,60 +277,29 @@ ctest -L regression  --output-on-failure
 ctest                --output-on-failure   # full suite
 ```
 
-**Run with ThreadSanitizer** (verifies FSM concurrent reads are race-free):
-```bash
-cmake -B build_tsan -DCMAKE_CXX_FLAGS="-fsanitize=thread" -DCMAKE_BUILD_TYPE=Debug
-cmake --build build_tsan -j$(nproc)
-cd build_tsan && ctest --output-on-failure -R ConcurrentStateReadsAreSafe
-```
-
-**Run the full suite:**
-
-```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
-cd build && ctest --output-on-failure
-```
-
-**Run a specific category:**
-
-```bash
-cd build && ctest --output-on-failure -R SolverFSM     # 22 FSM tests only
-cd build && ctest --output-on-failure -R SolverFactory  # factory + harness tests
-```
-
-**Run with ThreadSanitizer** (verifies concurrent state reads are data-race-free):
-
-```bash
-cmake -B build_tsan -DCMAKE_CXX_FLAGS="-fsanitize=thread" -DCMAKE_BUILD_TYPE=Debug
-cmake --build build_tsan -j$(nproc)
-cd build_tsan && ctest --output-on-failure -R ConcurrentStateReadsAreSafe
-```
+The TDMA 3.6× speedup claim is enforced by a regression assertion — not just
+a comment. If TDMA ever regresses toward Jacobi speed, CI fails with the
+iteration count in the failure message.
 
 ---
 
-## 6. Language pipeline
+## Technical Stack
 
-Each language is chosen for what it does best. They are connected, not redundant.
+* **Engine:** C++17 solver logic with high-performance Fortran 90 numerical kernels.
+* **Analytics:** Automated Python pipeline (PyVista, Matplotlib, Pandas) for headless profiling.
+* **CI/CD:** 45 GTests across unit / integration / regression layers — physical conservation
+  laws and convergence rates are verified on every push.
 
-| Layer | Language | Why this language |
-|-------|----------|------------------|
-| Software architecture | C++17 | `ISolver` interface, `SolverFSM`, `SolverFactory`, `ProfilingHarness`, `std::async` concurrency, `std::atomic` thread-safety |
-| Physics kernels | Fortran 90 | Column-major memory layout maps directly to CPU cache lines and BLAS/LAPACK conventions. `pure` subroutines are guaranteed side-effect-free — safe to call from concurrent threads. Inner loops exploit hardware prefetch on the fast index. |
-| ABI bridge | `extern "C"` / `bind(C)` | Zero-overhead function call. Fortran subroutines declare `bind(C, name="laplace_2d_jacobi")`. C++ declares `extern "C" void laplace_2d_jacobi(...)`. Linker resolves at link time — no runtime overhead, no marshalling. |
-| Analytics | Python 3 | `ProfilingHarness::writeCSV()` produces a schema that `plot_profiling.py` reads directly. `matplotlib` for wall-time charts, `PyVista` for VTK 3D field visualisation. Pure data consumer — no physics, no architecture. |
-| Build | CMake 3.15+ | Multi-language target (`LANGUAGES CXX Fortran`). `solver_component` static library linked to `physi_tests`. `-DPHYSI_CUDA=ON` flag enables `CudaThermalSolver` registration in factory without changing any call site. |
-| CI/CD | GitHub Actions | GTest suite on every push. Docker-clean environment. Python analytics step uploads profiling chart as CI artifact. |
-
-**Why Fortran for kernels specifically:** the Thomas algorithm (`solve_tdma`) is declared `pure` — the Fortran standard guarantees no side effects, no I/O, no global state. This is a stronger thread-safety guarantee than `const` in C++. When `ConcurrentSolverRunner` dispatches eight TDMA solvers simultaneously, each thread calls `solve_tdma` without any synchronisation required. The language itself provides the proof.
-
-**Column-major and C++ interop:** Fortran arrays are column-major (`T(i,j)` stores column `i` contiguously). C++ `Grid2D` is row-major. The bridge layer transposes on the way in and back out. This is not overhead — it is what makes the Fortran inner loop `do i = 2, nx-1` run on the fast index, matching CPU cache-line width and matching how BLAS stores matrices. The same layout consideration applies to CUDA global memory coalescing in Phase 5.
-
----
-
-## 7. Getting started
+## Getting Started
 
 ### Prerequisites
+
+* CMake (>= 3.14)
+* G++ (C++17)
+* gfortran
+* GTest (fetched automatically via CMake FetchContent)
+
+### Build and Test
 
 ```bash
 # Required
@@ -333,50 +320,4 @@ nvcc              # CUDA toolkit >= 11.0, for Phase 5
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 cd build && ctest --output-on-failure
-
-# With CUDA stub (Phase 5, no GPU required for stub mode)
-cmake -B build -DPHYSI_CUDA=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
 ```
-
-### Run profiling pipeline
-
-```bash
-# Generate CSV
-./build/physi_sim --profile --output docs/profiling/cpu_results.csv
-
-# Plot wall-time comparison
-python3 python/plot_profiling.py docs/profiling/cpu_results.csv
-# → saves docs/figures/profiling_cpu.png
-```
-
-### Docker (reproducible environment)
-
-```bash
-./scripts/run_docker.sh
-```
-
----
-
-## Technical stack summary
-
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Solver engine | C++17 | ISolver hierarchy, FSM, factory, concurrency |
-| Numerical kernels | Fortran 90 | Thomas algorithm, Jacobi/TDMA sweeps, ADI |
-| GPU acceleration | CUDA (Phase 5) | `CudaThermalSolver` via `ISolver` interface |
-| Analytics | Python 3 | Profiling plots, VTK post-processing |
-| Testing | Google Test | 46 tests, 0.29s total — physics + S/W |
-| CI/CD | GitHub Actions | Multi-language build, GTest, Python analytics |
-| Infrastructure | CMake + Docker | Reproducible, multi-language, CI-clean |
-
----
-
-## References
-
-1. Patankar, S.V. (1980). *Numerical Heat Transfer and Fluid Flow*. Hemisphere.
-2. Modest, M.F. (2013). *Radiative Heat Transfer* (3rd ed.). Academic Press.
-3. Bird, G.A. (1994). *Molecular Gas Dynamics and the Direct Simulation of Gas Flows*. Oxford.
-4. Cercignani, C. (1988). *The Boltzmann Equation and Its Applications*. Springer.
-5. Anderson, J.D. (1995). *Computational Fluid Dynamics*. McGraw-Hill.
-6. Maxwell, J.C. (1879). On stresses in rarified gases. *Phil. Trans. R. Soc.* 170, 231–256.

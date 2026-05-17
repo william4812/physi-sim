@@ -1,3 +1,12 @@
+// tests/regression/test_convergence_baselines.cpp
+//
+// Layer  : regression
+// Owns   : 2D physics convergence — residual tolerance + TDMA efficiency
+// Headers: core/Grid2D.hpp · core/solver.hpp · io/VTKWriter.hpp · io/CSVWriter.hpp
+//
+// A failure here means physics drifted, not a software bug.
+// From: tests/unit/test_physics.cpp
+
 #include <gtest/gtest.h>
 #include "core/Grid2D.hpp"
 #include "core/solver.hpp"
@@ -38,9 +47,9 @@ TEST(Physics2DTest, JacobiConvergenceAndProfile)
     physi_sim::io::CSVWriter csv;
     csv.write_history("jacobi_convergence.csv", residual_history);
 
-    // 6. Assertions (The "NVIDIA Signal")
+    // 6. Assertions
     EXPECT_LT(final_residual, target_tolerance);
-    EXPECT_GT(residual_history.size(), 0); // Ensure history was actually recorded
+    EXPECT_GT(residual_history.size(), 0u);
 }
 
 // Test 2: The TDMA Significance Test
@@ -49,14 +58,12 @@ TEST(Physics2DTest, TDMASweepEfficiency)
     int NX = 50, NY = 50;
     physi_sim::core::Grid2D grid(NX, NY);
 
-    for(int x = 0; x < NX; ++x) grid.at(x, NY-1) = 100.0;
+    for (int x = 0; x < NX; ++x) grid.at(x, NY-1) = 100.0;
 
     std::vector<double> residual_history;
     physi_sim::core::Solver2D solver;
-    // Note: TDMA propagates info across a whole line in one step
     double residual = solver.solve_laplace_tdma(grid, 1e-7, 3000, &residual_history);
 
-    // 4. Export results
     physi_sim::io::VTKWriter vtk;
     vtk.write_2d(grid.get_raw_data(), NX, NY, "tdma_final_map.vtk");
 
@@ -64,7 +71,14 @@ TEST(Physics2DTest, TDMASweepEfficiency)
     csv.write_history("tdma_convergence.csv", residual_history);
 
     EXPECT_LT(residual, 1e-7);
-    EXPECT_GT(residual_history.size(), 0);
-    // Significance Check: TDMA should finish in < 15% of Jacobi's iterations
-    // (Actual iteration count will be logged to console)
+    EXPECT_GT(residual_history.size(), 0u);
+
+    // Significance Check: TDMA must converge in < 30% of Jacobi's iterations.
+    // Jacobi baseline ~5500 iters. Threshold = 5500 * 0.30 = 1650.
+    // Was a comment in test_physics.cpp — now a verified CI assertion.
+    const size_t jacobi_baseline = 5500;
+    EXPECT_LT(residual_history.size(),
+              static_cast<size_t>(jacobi_baseline * 0.30))
+        << "TDMA efficiency regression: took " << residual_history.size()
+        << " iterations (threshold: " << static_cast<size_t>(jacobi_baseline * 0.30) << ")";
 }
