@@ -7,6 +7,7 @@ add_library(solver_component STATIC
     TDMACPU.cpp
     ProfilingHarness.cpp
     SolverFSM.cpp
+    ConcurrentSolverRunner.cpp
 )
 
 # Propagate include directories cleanly to consumers

@@ -57,6 +57,8 @@ add_executable(physi_tests
     # integration
     tests/integration/test_fortran_interop.cpp
     tests/integration/test_profiling_harness.cpp
+    tests/integration/test_concurrent_runner.cpp
+    
     # regression
     tests/regression/test_convergence_baselines.cpp
 )

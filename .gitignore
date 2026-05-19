@@ -52,3 +52,4 @@ Testing/
 __pycache__/
 *.pyc
 .deps/
+test_config.json
