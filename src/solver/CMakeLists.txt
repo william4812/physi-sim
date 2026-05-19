@@ -14,3 +14,7 @@ add_library(solver_component STATIC
 target_include_directories(solver_component PUBLIC 
     ${CMAKE_SOURCE_DIR}/src
 )
+
+target_link_libraries(solver_component
+    PUBLIC thermal_backend    # JacobiCPU and TDMACPU call Fortran via thermal_backend
+)
