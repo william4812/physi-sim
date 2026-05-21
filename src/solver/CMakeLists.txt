@@ -12,9 +12,10 @@ add_library(solver_component STATIC
 
 # Propagate include directories cleanly to consumers
 target_include_directories(solver_component PUBLIC 
-    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/include
 )
 
 target_link_libraries(solver_component
-    PUBLIC thermal_backend    # JacobiCPU and TDMACPU call Fortran via thermal_backend
+    PUBLIC  core_logic        # Grid2D is in ISolver's public interface
+    PRIVATE thermal_backend   # Fortran kernels are implementation detail
 )
