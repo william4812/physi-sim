@@ -16,6 +16,7 @@ struct ProfilingRecord {
     int         grid_ny        = 0;
     int         iterations     = 0;
     double      final_residual = 0.0;
+    double      normalized_residual = 0.0; 
     double      wall_time_ms   = 0.0;
     bool        converged      = false;
     std::string fsm_state;      // "CONVERGED" | "FAILED"  ← Phase 2 addition

@@ -1,8 +1,13 @@
-cmake_minimum_required(VERSION 3.14)
-project(PhysiSim LANGUAGES CXX Fortran)
+cmake_minimum_required(VERSION 3.18)
+project(PhysiSim LANGUAGES CXX Fortran CUDA)
 
+find_package(CUDAToolkit REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# CUDA default architecture — GTX 1650 is sm_75 (Turing).
+# Setting this here means every CUDA target inherits it without repeating it.
+set(CMAKE_CUDA_ARCHITECTURES 75)
 
 # 1. Dependency Management
 include(FetchContent)
@@ -32,6 +37,7 @@ add_subdirectory(src/thermal)
 add_subdirectory(src/io)
 add_subdirectory(src/core)
 add_subdirectory(src/solver)
+add_subdirectory(src/cuda)
 
 # 3. Main Executable
 add_executable(physi_sim src/main.cpp)
@@ -41,6 +47,7 @@ target_link_libraries(physi_sim PRIVATE
     io_component
     core_logic
     solver_component
+    cuda_solver
 )
 
 # 4. Unit Test Infrastructure
@@ -53,6 +60,7 @@ add_executable(physi_tests
     tests/unit/test_backend_dispatch.cpp
     tests/unit/test_solver_factory.cpp
     tests/unit/test_solver_fsm.cpp
+    tests/unit/test_cuda_jacobi_solver.cpp
 
     # integration
     tests/integration/test_fortran_interop.cpp
@@ -67,7 +75,9 @@ target_link_libraries(physi_tests PRIVATE
     solver_component
     core_logic
     thermal_backend
-    io_component 
+    io_component
+    cuda_solver
+    CUDA::cudart 
     gtest_main
 )
 include(GoogleTest)
