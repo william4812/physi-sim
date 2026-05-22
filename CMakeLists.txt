@@ -87,10 +87,13 @@ add_executable(physi_tests
     tests/regression/test_convergence_baselines.cpp
 )
 
-# ← physi_tests now exists, safe to call target_compile_definitions
 if(PHYSI_SIM_CUDA_ENABLED)
+    target_sources(physi_tests PRIVATE
+        tests/unit/test_cuda_jacobi_solver.cpp
+    )
     target_compile_definitions(physi_tests PRIVATE PHYSI_SIM_CUDA_ENABLED)
 endif()
+
 
 # physi_tests executable:
 target_link_libraries(physi_tests PRIVATE
