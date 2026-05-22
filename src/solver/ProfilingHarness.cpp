@@ -117,7 +117,7 @@ void ProfilingHarness::writeCSV(const std::string& path) const
 
        // Header — fsm_state added at end
     f << "solver,backend,grid_nx,grid_ny,"
-      << "iterations,final_residual,wall_time_ms,converged,fsm_state\n";
+      << "iterations,final_residual,normalized_residual,wall_time_ms,converged,fsm_state\n"; 
     
     for (const auto& r : results_)
     {
@@ -127,6 +127,7 @@ void ProfilingHarness::writeCSV(const std::string& path) const
           << r.grid_ny        << ","
           << r.iterations     << ","
           << std::scientific << std::setprecision(6) << r.final_residual << ","
+          << std::scientific << std::setprecision(6) << r.normalized_residual << ","
           << std::fixed      << std::setprecision(4) << r.wall_time_ms   << ","
           << (r.converged ? "true" : "false")         << ","
           << r.fsm_state      << "\n";

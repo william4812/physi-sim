@@ -58,6 +58,8 @@ protected:
 
     static constexpr int nx = 20;
     static constexpr int ny = 20;
+    // absolute L∞ tolerance — max|T_new - T_old| in Kelvin
+    // not the same as ProfilingHarness normalized tolerance (ratio)
     static constexpr double tolerance = 5e-4;
 
     std::unique_ptr<physi_sim::core::Grid2D> grid;
@@ -233,3 +235,45 @@ TEST_F(CudaJacobiSolverTest, FieldMatchesCPUJacobiAfterConvergence) {
     EXPECT_EQ(mismatches, 0)
         << mismatches << " interior cells differ by more than " << tolerance;
 }
+
+#ifdef PHYSI_SIM_CUDA_ENABLED
+TEST_F(CudaJacobiSolverTest, IterationCountMatchesCPUJacobi)
+{
+    /**
+     * Same stencil → same iteration count to the same tolerance.
+     * GPU and CPU Jacobi must converge in the same number of steps
+     * on identical initial conditions. A difference > 5% indicates
+     * a stencil mismatch — the most common silent CUDA kernel bug.
+     */
+    using Jacobi    = physi_sim::solver::CudaJacobiSolver;
+    using JacobiCPU = physi_sim::solver::JacobiCPU;
+
+    // GPU solve
+    Jacobi gpu_solver;
+    int gpu_iters = 0;
+    while (gpu_solver.residual() > tolerance || gpu_solver.residual() == 0.0) {
+        gpu_solver.step(*grid);
+        ++gpu_iters;
+    }
+
+    // CPU solve — identical initial conditions
+    physi_sim::core::Grid2D cpu_grid(nx, ny);
+    for (int x = 0; x < nx; ++x)
+        for (int y = 0; y < ny; ++y)
+            cpu_grid(x, y) = (y == ny - 1) ? 100.0 : 0.0;
+
+    JacobiCPU cpu_solver;
+    int cpu_iters = 0;
+    while (cpu_solver.residual() > tolerance || cpu_solver.residual() == 0.0) {
+        cpu_solver.step(cpu_grid);
+        ++cpu_iters;
+    }
+
+    // Same stencil → same iteration count within 5% floating-point noise
+    const double ratio = static_cast<double>(gpu_iters) / cpu_iters;
+    EXPECT_NEAR(ratio, 1.0, 0.05)
+        << "GPU iters=" << gpu_iters << " CPU iters=" << cpu_iters
+        << " ratio=" << ratio
+        << " — stencil mismatch suspected";
+}
+#endif

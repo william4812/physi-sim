@@ -55,6 +55,7 @@ add_executable(physi_sim src/main.cpp)
 # src/cuda subdirectory:
 if(PHYSI_SIM_CUDA_ENABLED)
     add_subdirectory(src/cuda)
+    target_compile_definitions(solver_component PUBLIC PHYSI_SIM_CUDA_ENABLED)
 endif()
 
 # physi_sim executable:

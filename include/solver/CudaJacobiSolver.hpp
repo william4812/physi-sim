@@ -29,6 +29,7 @@
 
 #include "solver/ISolver.hpp"
 #include "core/Grid2D.hpp"
+#include "solver/JacobiCPU.hpp"
 #include <string>
 
 namespace physi_sim::solver 
