@@ -22,7 +22,9 @@
 #include "solver/ISolver.hpp"
 #include "core/Grid2D.hpp"
 
+#ifdef PHYSI_SIM_CUDA_ENABLED
 #include <cuda_runtime.h>
+#endif
 #include <cmath>
 #include <memory>
 
@@ -92,7 +94,8 @@ TEST_F(CudaJacobiSolverTest, ResidualIsZeroBeforeAnyStep)
     EXPECT_DOUBLE_EQ(solver.residual(), 0.0);
 }
 
-TEST_F(CudaJacobiSolverTest, IsNonCopyable) {
+TEST_F(CudaJacobiSolverTest, IsNonCopyable) 
+{
     // Device memory ownership is exclusive. Copying would silently
     // alias raw CUDA pointers — two objects calling cudaFree on the
     // same pointer is undefined behaviour.
@@ -105,7 +108,8 @@ TEST_F(CudaJacobiSolverTest, IsNonCopyable) {
 // 2. Physics tests — single step and convergence behaviour
 // ---------------------------------------------------------------------------
 
-TEST_F(CudaJacobiSolverTest, ResidualIsPositiveAfterOneStep) {
+TEST_F(CudaJacobiSolverTest, ResidualIsPositiveAfterOneStep) 
+{
     physi_sim::solver::CudaJacobiSolver solver;
     solver.step(*grid);
 
