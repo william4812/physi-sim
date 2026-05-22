@@ -36,27 +36,24 @@ class CudaJacobiSolverTest : public ::testing::Test
 {
 protected:
     void SetUp() override {
-        // Skip every test in this fixture if no CUDA device is present.
-        // This keeps CI (no GPU) green while running the full suite locally.
+#ifndef PHYSI_SIM_CUDA_ENABLED
+        GTEST_SKIP() << "Built without CUDA — skipping GPU tests";
+#else
         int device_count = 0;
         cudaGetDeviceCount(&device_count);
         if (device_count == 0) {
             GTEST_SKIP() << "No CUDA device found — skipping GPU tests";
         }
 
-        // 20×20 grid — small enough to be fast, large enough to have
-        // meaningful interior. Boundary conditions:
-        //   top row (y=ny-1): T = 100
-        //   all other boundaries: T = 0
         grid = std::make_unique<physi_sim::core::Grid2D>(nx, ny);
 
         for (int x = 0; x < nx; ++x)
             for (int y = 0; y < ny; ++y)
                 (*grid)(x, y) = 0.0;
 
-        // Top boundary: T = 100
         for (int x = 0; x < nx; ++x)
             (*grid)(x, ny - 1) = 100.0;
+#endif
     }
 
     static constexpr int nx = 20;
