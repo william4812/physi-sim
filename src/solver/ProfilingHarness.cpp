@@ -34,21 +34,27 @@ ProfilingRecord ProfilingHarness::run(core::Grid2D& grid,
     // Timer starts after FSM bookkeeping — we time physics, not state ops.
     const auto t0 = std::chrono::high_resolution_clock::now();
  
-    int    iter = 0;
-    double res  = std::numeric_limits<double>::max();
- 
+    int    iter             = 0;
+    double res              = std::numeric_limits<double>::max();
+    double residual_initial = -1.0;   // set on iter 0, used for normalization 
+    
     for (; iter < max_iters; ++iter) 
     {
+
         solver_->step(grid);
         res = solver_->residual();
- 
+        if (iter == 0) residual_initial = res;   // anchor: drop measured from here
+        
         if (verbose && iter % 100 == 0)
             std::cout << "[" << solver_->name() << "]"
                       << " iter=" << iter
                       << " res="  << std::scientific << std::setprecision(3)
                       << res << "\n";
- 
-        if (res < tolerance) 
+
+        const double normalized = (residual_initial > 0.0)
+            ? res / residual_initial : res;
+
+        if (normalized < tolerance)
         {
             fsm_.finish(true);   // RUNNING → CONVERGED
             ++iter;
@@ -79,6 +85,9 @@ ProfilingRecord ProfilingHarness::run(core::Grid2D& grid,
     rec.grid_ny        = grid.get_ny();
     rec.iterations     = iter;
     rec.final_residual = res;
+    rec.normalized_residual = (residual_initial > 0.0)
+                                ? res / residual_initial
+                                : res;
     rec.wall_time_ms   = wall_ms;
     rec.converged      = converged;
     rec.fsm_state      = fsm_state;
@@ -108,7 +117,7 @@ void ProfilingHarness::writeCSV(const std::string& path) const
 
        // Header — fsm_state added at end
     f << "solver,backend,grid_nx,grid_ny,"
-      << "iterations,final_residual,wall_time_ms,converged,fsm_state\n";
+      << "iterations,final_residual,normalized_residual,wall_time_ms,converged,fsm_state\n"; 
     
     for (const auto& r : results_)
     {
@@ -118,6 +127,7 @@ void ProfilingHarness::writeCSV(const std::string& path) const
           << r.grid_ny        << ","
           << r.iterations     << ","
           << std::scientific << std::setprecision(6) << r.final_residual << ","
+          << std::scientific << std::setprecision(6) << r.normalized_residual << ","
           << std::fixed      << std::setprecision(4) << r.wall_time_ms   << ","
           << (r.converged ? "true" : "false")         << ","
           << r.fsm_state      << "\n";

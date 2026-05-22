@@ -118,12 +118,8 @@ contains
                 ! T_new = average of 4 neighbors
                 T_new(i, j) = 0.25d0 * (T(i+1, j) + T(i-1, j) + T(i, j+1) + T(i, j-1))
                 
-                ! Accumulate squared difference for L2-norm residual
-                ! Calculate Max Relative Error (L-infinity norm) [cite: 23]
-                if (abs(T_new(i, j)) > 1e-12) then
-                    current_err = abs(T_new(i, j) - T(i, j)) / abs(T_new(i, j))
-                    if (current_err > res_norm) res_norm = current_err
-                end if
+                current_err = abs(T_new(i, j) - T(i, j))   ! absolute L∞, no division
+                if (current_err > res_norm) res_norm = current_err
             end do
         end do
 
@@ -162,9 +158,7 @@ contains
     res_norm = 0.0
     do j = 1, ny
         do i = 1, nx
-            if (abs(T(i,j)) > 1e-12) then
-                res_norm = max(res_norm, abs(T(i,j) - T_old(i,j))/abs(T(i,j))) 
-            end if
+            res_norm = max(res_norm, abs(T(i,j) - T_old(i,j)))   ! absolute L∞
         end do
     end do
     end subroutine laplace_2d_tdma

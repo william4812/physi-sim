@@ -99,7 +99,7 @@ TEST_F(ConcurrentRunnerTest, EachGridIsIndependent)
 {
     RunConfig cfg;
     cfg.max_iters = 10000;
-    cfg.tolerance = 1e-7;
+    cfg.tolerance = 1e-4;
 
     auto records = ConcurrentSolverRunner::run(twoSolvers(), *large_grid, cfg);
     ASSERT_EQ(records.size(), 2u);

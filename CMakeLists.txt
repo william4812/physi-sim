@@ -1,8 +1,24 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.18)
 project(PhysiSim LANGUAGES CXX Fortran)
+
+include(CheckLanguage)
+check_language(CUDA)
+if(CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_ARCHITECTURES 75)
+    find_package(CUDAToolkit REQUIRED)
+    set(PHYSI_SIM_CUDA_ENABLED ON)
+    message(STATUS "CUDA found — building GPU solvers (sm_75)")
+else()
+    set(PHYSI_SIM_CUDA_ENABLED OFF)
+    message(STATUS "CUDA not found — CPU-only build")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# CUDA default architecture — GTX 1650 is sm_75 (Turing).
+# Setting this here means every CUDA target inherits it without repeating it.
 
 # 1. Dependency Management
 include(FetchContent)
@@ -36,11 +52,19 @@ add_subdirectory(src/solver)
 # 3. Main Executable
 add_executable(physi_sim src/main.cpp)
 # We link to the specific library created in the subdirectory
-target_link_libraries(physi_sim PRIVATE 
+# src/cuda subdirectory:
+if(PHYSI_SIM_CUDA_ENABLED)
+    add_subdirectory(src/cuda)
+    target_compile_definitions(solver_component PUBLIC PHYSI_SIM_CUDA_ENABLED)
+endif()
+
+# physi_sim executable:
+target_link_libraries(physi_sim PRIVATE
     thermal_backend
     io_component
     core_logic
     solver_component
+    $<$<BOOL:${PHYSI_SIM_CUDA_ENABLED}>:cuda_solver>
 )
 
 # 4. Unit Test Infrastructure
@@ -62,13 +86,25 @@ add_executable(physi_tests
     # regression
     tests/regression/test_convergence_baselines.cpp
 )
- 
-target_link_libraries(physi_tests PRIVATE 
+
+if(PHYSI_SIM_CUDA_ENABLED)
+    target_sources(physi_tests PRIVATE
+        tests/unit/test_cuda_jacobi_solver.cpp
+    )
+    target_compile_definitions(physi_tests PRIVATE PHYSI_SIM_CUDA_ENABLED)
+endif()
+
+
+# physi_tests executable:
+target_link_libraries(physi_tests PRIVATE
     solver_component
     core_logic
     thermal_backend
-    io_component 
+    io_component
+    $<$<BOOL:${PHYSI_SIM_CUDA_ENABLED}>:cuda_solver>
+    $<$<BOOL:${PHYSI_SIM_CUDA_ENABLED}>:CUDA::cudart>
     gtest_main
 )
+
 include(GoogleTest)
 gtest_discover_tests(physi_tests)

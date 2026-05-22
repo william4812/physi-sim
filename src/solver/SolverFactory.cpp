@@ -2,6 +2,9 @@
 #include "solver/SolverFactory.hpp"
 #include "solver/JacobiCPU.hpp"
 #include "solver/TDMACPU.hpp"
+#ifdef PHYSI_SIM_CUDA_ENABLED
+#include "solver/CudaJacobiSolver.hpp"
+#endif
 #include <stdexcept>
 #include <algorithm>
 #include <cctype>
@@ -20,10 +23,14 @@ std::unique_ptr<ISolver> SolverFactory::create(SolverType type, HardwareBackend 
     switch (type) {
     case SolverType::JACOBI:
         if (backend == HardwareBackend::CPU) return std::make_unique<JacobiCPU>();
-        throw std::invalid_argument("JacobiGPU: Phase 3");
+#ifdef PHYSI_SIM_CUDA_ENABLED     
+        if (backend == HardwareBackend::CUDA) return std::make_unique<CudaJacobiSolver>();
+#endif        
+        break;
     case SolverType::TDMA:
         if (backend == HardwareBackend::CPU) return std::make_unique<TDMACPU>();
         throw std::invalid_argument("TDMAGPU: Phase 3b");
+//        break;
     }
     throw std::invalid_argument("Unknown SolverType/Backend");
 }
