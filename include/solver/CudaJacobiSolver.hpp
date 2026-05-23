@@ -29,8 +29,8 @@
 
 #include "solver/ISolver.hpp"
 #include "core/Grid2D.hpp"
-#include "solver/JacobiCPU.hpp"
 #include <string>
+#include <vector> // m_history
 
 namespace physi_sim::solver 
 {
@@ -55,6 +55,7 @@ public:
         , m_nx      (other.m_nx)
         , m_ny      (other.m_ny)
         , m_residual(other.m_residual)
+        , m_history (std::move(other.m_history))
     {
         other.d_current = other.d_next = other.d_diff_buf = nullptr;
     }
@@ -69,6 +70,7 @@ public:
         m_nx       = other.m_nx;
         m_ny       = other.m_ny;
         m_residual = other.m_residual;
+        m_history  = std::move(other.m_history);
         other.d_current = other.d_next = other.d_diff_buf = nullptr;
         return *this;
     }
@@ -93,6 +95,13 @@ public:
      */
     std::string name() const override { return "JacobiGPU"; }
 
+        /**
+     * Per-step residual history — one entry per step() call.
+     * history()[0] = residual after step 1, history()[n-1] = final.
+     * Empty before the first step(). Use to write GPU convergence CSV.
+     * Same format as jacobi_convergence.csv — directly plottable.
+     */
+    [[nodiscard]] const std::vector<double>& history() const { return m_history; }
 private:
     // Allocate / reallocate device buffers if grid size changed.
     void allocate(int nx, int ny);
@@ -107,6 +116,8 @@ private:
     int    m_nx       = 0;          // tracks allocation size to avoid realloc
     int    m_ny       = 0;
     double m_residual = 0.0;        // 0.0 until first step() — never garbage
+
+    std::vector<double> m_history;   // residual per step — for CSV export
 };
 
 } // namespace physi_sim::solver

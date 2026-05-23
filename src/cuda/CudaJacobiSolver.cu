@@ -256,6 +256,7 @@ void CudaJacobiSolver::step(core::Grid2D& grid)
                       AbsDiff{});
 
     m_residual = *thrust::max_element(p_diff, p_diff + nx * ny);
+    m_history.push_back(m_residual);
 
     // ── 7. Download result d_next → host Grid2D ───────────────────────────
     // Same data() pointer used for upload — in-place update of Grid2D.
