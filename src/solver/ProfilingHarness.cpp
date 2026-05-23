@@ -80,7 +80,8 @@ ProfilingRecord ProfilingHarness::run(core::Grid2D& grid,
     // Assemble record
     ProfilingRecord rec;
     rec.solver_name    = solver_->name();
-    rec.backend_name   = "cpu";
+    rec.backend_name = (solver_->name().find("GPU") 
+            != std::string::npos) ? "cuda" : "cpu";
     rec.grid_nx        = grid.get_nx();
     rec.grid_ny        = grid.get_ny();
     rec.iterations     = iter;

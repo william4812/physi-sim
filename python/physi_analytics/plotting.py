@@ -46,10 +46,10 @@ def plot_benchmark_bars(profiling_df: pd.DataFrame, save_path: Path):
     Bar chart: iterations and wall time per solver.
     Reads ProfilingHarness::writeCSV() output.
 
-    Columns expected: solver_name, iterations, wall_time_ms, converged
+    Columns expected: solver, iterations, wall_time_ms, converged
     """
     df = profiling_df[profiling_df["converged"] == True].copy()
-    names  = df["solver_name"].tolist()
+    names  = df["solver"].tolist()
     iters  = df["iterations"].tolist()
     times  = df["wall_time_ms"].tolist()
 
@@ -127,7 +127,7 @@ def plot_convergence_with_gpu(jacobi_df: pd.DataFrame,
 
     # Annotate GPU final residual as a point (no per-iteration history yet)
     if profiling_df is not None:
-        gpu_row = profiling_df[profiling_df["solver_name"] == "JacobiGPU"]
+        gpu_row = profiling_df[profiling_df["solver"] == "JacobiGPU"]
         if not gpu_row.empty:
             gpu_iters = int(gpu_row["iterations"].iloc[0])
             gpu_res   = float(gpu_row["final_residual"].iloc[0])

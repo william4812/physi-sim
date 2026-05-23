@@ -141,10 +141,13 @@ void run_solver_benchmark()
     std::cout << "\n--- Starting ISolver Four-Way Benchmark ---\n";
 
     // ── Grid: 100×100, top boundary T=100 ────────────────────────────────
-    const int NX = 100, NY = 100;
+    const int NX = 500, NY = 500;
     core::Grid2D grid_template(NX, NY);
     for (int x = 0; x < NX; ++x)
         grid_template(x, NY - 1) = 100.0;
+
+    const double TOLERANCE = 1e-4;
+    const int    MAX_ITERS = 10000;
 
     // ── Solver list — CUDA entry guarded for CPU-only CI builds ──────────
     struct Entry { SolverType type; HardwareBackend backend; };
@@ -157,7 +160,6 @@ void run_solver_benchmark()
     };
 
     // ── Run each solver through ProfilingHarness (FSM drives lifecycle) ──
-    ProfilingHarness* first = nullptr;
     std::vector<std::unique_ptr<ProfilingHarness>> harnesses;
 
     for (auto& e : entries) 
@@ -167,7 +169,7 @@ void run_solver_benchmark()
         const std::string sname = s->name();
 
         auto h = std::make_unique<ProfilingHarness>(std::move(s));
-        auto rec = h->run(grid, /*max_iters=*/10000, /*tolerance=*/1e-4, /*verbose=*/false);
+        auto rec = h->run(grid, MAX_ITERS, TOLERANCE, /*verbose=*/false);
         (void) rec; // suppresses unused-variable warning
 
         // ── Write per-iteration convergence CSV ──────────────────────────
@@ -190,17 +192,31 @@ void run_solver_benchmark()
             }
         }
 #endif
-        if (!first) first = h.get();
         harnesses.push_back(std::move(h));
     }
 
-    // ── Write summary CSV via the first harness ───────────────────────────
-    // Each harness accumulated its own record in results().
-    // Combine by writing them all through the first harness's writeCSV —
-    // which iterates its internal results_ vector.
-    if (first) 
+    // AFTER:
     {
-        first->writeCSV("profiling_results.csv");
+        std::ofstream f("profiling_results.csv");
+        f << "solver,backend,grid_nx,grid_ny,"
+          << "iterations,final_residual,normalized_residual,"
+          << "wall_time_ms,converged,fsm_state\n";
+        for (auto& h : harnesses) {
+            for (const auto& r : h->results()) {
+                f << r.solver_name    << ","
+                  << r.backend_name   << ","
+                  << r.grid_nx        << ","
+                  << r.grid_ny        << ","
+                  << r.iterations     << ","
+                  << std::scientific  << std::setprecision(6)
+                  << r.final_residual << ","
+                  << r.normalized_residual << ","
+                  << std::fixed       << std::setprecision(4)
+                  << r.wall_time_ms   << ","
+                  << (r.converged ? "true" : "false") << ","
+                  << r.fsm_state      << "\n";
+            }
+        }
         std::cout << "[IO] Summary written to profiling_results.csv\n";
     }
 

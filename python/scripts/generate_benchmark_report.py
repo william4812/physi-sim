@@ -77,8 +77,8 @@ def main():
           f"final = {tdma['Residual'].iloc[-1]:.3e}")
     print(f"  TDMA/Jacobi ratio: {ratio:.3f}  ({1/ratio:.2f}× fewer iterations)")
     if profiling is not None:
-        gpu = profiling[profiling["solver_name"] == "JacobiGPU"]
-        cpu = profiling[profiling["solver_name"] == "JacobiCPU"]
+        gpu = profiling[profiling["solver"] == "JacobiGPU"]
+        cpu = profiling[profiling["solver"] == "JacobiCPU"]
         if not gpu.empty and not cpu.empty:
             speedup = float(cpu["wall_time_ms"].iloc[0]) / float(gpu["wall_time_ms"].iloc[0])
             print(f"  GPU speedup: {speedup:.2f}×  "
