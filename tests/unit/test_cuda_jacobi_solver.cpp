@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 #include "solver/CudaJacobiSolver.hpp"
 #include "solver/ISolver.hpp"
+#include "solver/JacobiCPU.hpp"
 #include "core/Grid2D.hpp"
 
 #ifdef PHYSI_SIM_CUDA_ENABLED
@@ -35,7 +36,8 @@
 class CudaJacobiSolverTest : public ::testing::Test 
 {
 protected:
-    void SetUp() override {
+    void SetUp() override 
+    {
 #ifndef PHYSI_SIM_CUDA_ENABLED
         GTEST_SKIP() << "Built without CUDA — skipping GPU tests";
 #else

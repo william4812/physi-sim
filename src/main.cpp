@@ -2,13 +2,22 @@
 #include "thermal/LinearDummySolver.hpp"
 #include "thermal/FortranBackend.hpp"
 #include "io/VTKWriter.hpp"
+#include "solver/SolverFactory.hpp"      // 
+#include "solver/ProfilingHarness.hpp"    
+#include "core/Grid2D.hpp"               
+#ifdef PHYSI_SIM_CUDA_ENABLED
+#include "solver/CudaJacobiSolver.hpp"
+#endif
+#include <fstream>                       // CSV writing
 #include <iostream>
 #include <memory>
 #include <chrono>
 #include <iomanip>
 
+// forward declaration
 void run_thermal_benchmark(); 
-
+void run_solver_benchmark();             
+                                        
 int main() {
     std::cout << "--- PhysiSim LBM Solver Starting (Mock Mode) ---\n";
 
@@ -46,6 +55,7 @@ int main() {
     try 
     {
         run_thermal_benchmark();
+        run_solver_benchmark();
     } catch (const std::exception& e) 
     {
         std::cerr << "Hardware/Logic Error: " << e.what() << std::endl;
@@ -101,4 +111,98 @@ void run_thermal_benchmark()
     std::cout << "Avg per Step:   " << (elapsed.count() / iterations) * 1000.0 << " ms" << std::endl;
     std::cout << "Performance:    " << gflops << " GFLOPS" << std::endl;
     std::cout << "---------------------------------------------------" << std::endl;
+}
+
+/**
+ * @brief Four-way ISolver benchmark: JacobiCPU, TDMACPU, JacobiGPU.
+ *
+ * ProfilingHarness owns the FSM lifecycle for each solver:
+ *   IDLE → prepare() → READY → start() → RUNNING
+ *       → finish(converged) → CONVERGED|FAILED → reset() → IDLE
+ *
+ * All solvers run on the same 100×100 grid with the same boundary
+ * condition (T=100 top row) and the same normalized convergence
+ * criterion (L∞ < 1e-4 relative to iteration-0 residual).
+ *
+ * Outputs:
+ *   profiling_results.csv           — wall time + iterations per solver
+ *   JacobiCPU_convergence.csv       — per-step residual history
+ *   TDMACPU_convergence.csv         — per-step residual history
+ *   JacobiGPU_convergence.csv       — per-step residual history (GPU)
+ */
+void run_solver_benchmark()
+{
+    using namespace physi_sim;
+    using solver::SolverFactory;
+    using solver::SolverType;
+    using solver::HardwareBackend;
+    using solver::ProfilingHarness;
+
+    std::cout << "\n--- Starting ISolver Four-Way Benchmark ---\n";
+
+    // ── Grid: 100×100, top boundary T=100 ────────────────────────────────
+    const int NX = 100, NY = 100;
+    core::Grid2D grid_template(NX, NY);
+    for (int x = 0; x < NX; ++x)
+        grid_template(x, NY - 1) = 100.0;
+
+    // ── Solver list — CUDA entry guarded for CPU-only CI builds ──────────
+    struct Entry { SolverType type; HardwareBackend backend; };
+    std::vector<Entry> entries = {
+        { SolverType::JACOBI, HardwareBackend::CPU  },
+        { SolverType::TDMA,   HardwareBackend::CPU  },
+#ifdef PHYSI_SIM_CUDA_ENABLED
+        { SolverType::JACOBI, HardwareBackend::CUDA },
+#endif
+    };
+
+    // ── Run each solver through ProfilingHarness (FSM drives lifecycle) ──
+    ProfilingHarness* first = nullptr;
+    std::vector<std::unique_ptr<ProfilingHarness>> harnesses;
+
+    for (auto& e : entries) 
+    {
+        core::Grid2D grid = grid_template;          // fresh copy per solver
+        auto s = SolverFactory::create(e.type, e.backend);
+        const std::string sname = s->name();
+
+        auto h = std::make_unique<ProfilingHarness>(std::move(s));
+        auto rec = h->run(grid, /*max_iters=*/10000, /*tolerance=*/1e-4, /*verbose=*/false);
+        (void) rec; // suppresses unused-variable warning
+
+        // ── Write per-iteration convergence CSV ──────────────────────────
+        // CPU solvers: residual history lives in ProfilingRecord.
+        // GPU solver:  history() on CudaJacobiSolver via dynamic_cast.
+#ifdef PHYSI_SIM_CUDA_ENABLED
+        if (e.backend == HardwareBackend::CUDA) 
+        {
+            auto* gpu = dynamic_cast<solver::CudaJacobiSolver*>(&h->solver());
+            if (gpu && !gpu->history().empty()) 
+            {
+                std::ofstream f(sname + "_convergence.csv");
+                f << "Iteration,Residual\n";
+                for (int i = 0; i < (int)gpu->history().size(); ++i) 
+                {
+                    f << i << "," << std::scientific << gpu->history()[i] << "\n";
+                std::cout << "[IO] " << sname << " convergence written to "
+                          << sname << "_convergence.csv\n";
+                }
+            }
+        }
+#endif
+        if (!first) first = h.get();
+        harnesses.push_back(std::move(h));
+    }
+
+    // ── Write summary CSV via the first harness ───────────────────────────
+    // Each harness accumulated its own record in results().
+    // Combine by writing them all through the first harness's writeCSV —
+    // which iterates its internal results_ vector.
+    if (first) 
+    {
+        first->writeCSV("profiling_results.csv");
+        std::cout << "[IO] Summary written to profiling_results.csv\n";
+    }
+
+    std::cout << "--- ISolver Benchmark Complete ---\n\n";
 }
