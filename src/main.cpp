@@ -2,6 +2,7 @@
 #include "thermal/LinearDummySolver.hpp"
 #include "thermal/FortranBackend.hpp"
 #include "io/VTKWriter.hpp"
+#include "io/ConfigLoader.hpp"
 #include "solver/SolverFactory.hpp"      // 
 #include "solver/ProfilingHarness.hpp"    
 #include "core/Grid2D.hpp"               
@@ -16,9 +17,11 @@
 
 // forward declaration
 void run_thermal_benchmark(); 
-void run_solver_benchmark();             
+auto params = physi_sim::io::ConfigLoader::load_json("../benchmark_config.json");
+void run_solver_benchmark(const physi_sim::core::SimulationParams& params);             
                                         
-int main() {
+int main() 
+{
     std::cout << "--- PhysiSim LBM Solver Starting (Mock Mode) ---\n";
 
     // 1. Dependency Injection: Create the Mock hardware backend
@@ -36,7 +39,8 @@ int main() {
     LinearDummySolver dSolver(std::move(backend), domain_size);
 
     // 4. Execute time steps to fill the linear profile
-    for (size_t i = 0; i < domain_size; ++i) {
+    for (size_t i = 0; i < domain_size; ++i) 
+    {
         std::cout << "Step " << i << ": ";
         dSolver.step(dt, dx);
         std::cout << "OK\n";
@@ -55,7 +59,7 @@ int main() {
     try 
     {
         run_thermal_benchmark();
-        run_solver_benchmark();
+        run_solver_benchmark(params);
     } catch (const std::exception& e) 
     {
         std::cerr << "Hardware/Logic Error: " << e.what() << std::endl;
@@ -130,7 +134,7 @@ void run_thermal_benchmark()
  *   TDMACPU_convergence.csv         — per-step residual history
  *   JacobiGPU_convergence.csv       — per-step residual history (GPU)
  */
-void run_solver_benchmark()
+void run_solver_benchmark(const physi_sim::core::SimulationParams& params)
 {
     using namespace physi_sim;
     using solver::SolverFactory;
@@ -141,13 +145,21 @@ void run_solver_benchmark()
     std::cout << "\n--- Starting ISolver Four-Way Benchmark ---\n";
 
     // ── Grid: 100×100, top boundary T=100 ────────────────────────────────
-    const int NX = 500, NY = 500;
+//    const int NX = 500, NY = 500;
+//    core::Grid2D grid_template(NX, NY);
+//    for (int x = 0; x < NX; ++x)
+//        grid_template(x, NY - 1) = 100.0;
+//
+//    const double TOLERANCE = 1e-4;
+//    const int    MAX_ITERS = 10000;
+
+    const int    NX        = params.grid_sizes.back();
+    const int    NY        = NX;
     core::Grid2D grid_template(NX, NY);
     for (int x = 0; x < NX; ++x)
-        grid_template(x, NY - 1) = 100.0;
-
-    const double TOLERANCE = 1e-4;
-    const int    MAX_ITERS = 10000;
+        grid_template(x, NY - 1) = params.initial_temp;//100.0;
+    const double TOLERANCE = params.tolerance;
+    const int    MAX_ITERS = params.max_iterations;
 
     // ── Solver list — CUDA entry guarded for CPU-only CI builds ──────────
     struct Entry { SolverType type; HardwareBackend backend; };

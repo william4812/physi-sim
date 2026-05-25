@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 
 namespace physi_sim::core {
 
@@ -18,6 +19,11 @@ struct SimulationParams {
     double      tolerance      = 1e-7;    // L-inf convergence threshold
     int         max_iterations = 10000;   // iteration cap
     double      initial_temp   = 0.0;     // initial field value
+
+    // benchmark sweep fields
+    std::vector<int> grid_sizes = {100, 500};  // NX=NY for each run
+    bool             run_gpu    = true;         // include JacobiGPU in sweep
+    std::string      output_dir = ".";          // CSV output directory
 };
 
 } // namespace physi_sim::core
