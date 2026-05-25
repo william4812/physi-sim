@@ -14,7 +14,7 @@ else()
     message(STATUS "CUDA not found — CPU-only build")
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # CUDA default architecture — GTX 1650 is sm_75 (Turing).

@@ -36,7 +36,7 @@ int main() {
     LinearDummySolver dSolver(std::move(backend), domain_size);
 
     // 4. Execute time steps to fill the linear profile
-    for (int i = 0; i < domain_size; ++i) {
+    for (size_t i = 0; i < domain_size; ++i) {
         std::cout << "Step " << i << ": ";
         dSolver.step(dt, dx);
         std::cout << "OK\n";

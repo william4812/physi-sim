@@ -10,7 +10,8 @@ public:
     {
     }
     
-    void step(double dt, double dx) 
+    void step([[maybe_unused]] double dt, 
+              [[maybe_unused]] double dx) 
     {
        m_backend->collide();
        m_backend->stream();
