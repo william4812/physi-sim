@@ -1,0 +1,58 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 18, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "hpc-release",
+      "displayName": "HPC Release (NVIDIA/x86)",
+      "description": "Maximum performance + security hardening for HPC targets",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Werror -O3 -march=native -fstack-protector-strong -D_FORTIFY_SOURCE=2 -fPIE -pie -Wformat -Wformat-security",
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -pie"
+      }
+    },
+    {
+      "name": "dev-sanitize",
+      "displayName": "Development + AddressSanitizer + UBSan",
+      "description": "Debug build with ASan + UBSan. Never ship this binary.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-san",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "hpc",
+      "displayName": "Build HPC Release",
+      "configurePreset": "hpc-release",
+      "jobs": 0
+    },
+    {
+      "name": "sanitize",
+      "displayName": "Build with ASan + UBSan",
+      "configurePreset": "dev-sanitize",
+      "jobs": 0
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "hpc-test",
+      "displayName": "Run tests (HPC build)",
+      "configurePreset": "hpc-release",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "sanitize-test",
+      "displayName": "Run tests with ASan + UBSan",
+      "configurePreset": "dev-sanitize",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

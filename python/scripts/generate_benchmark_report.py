@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 """
 scripts/generate_benchmark_report.py
-Generates two new README figures:
-  1. convergence_with_gpu.png  — CPU curves + GPU final point
-  2. cpu_vs_gpu_benchmark.png  — iteration count and wall time bar charts
+
+Generates all README figures from physi-sim benchmark output.
+
+FIGURES PRODUCED:
+  jacobi_cpu_vs_gpu.png         — convergence + wall time + ms/iter (focused)
+  thermal_field.png             — converged temperature field heatmap
+  convergence_comparison.png    — Jacobi vs TDMA (regression test path)
+  gpu_speedup_vs_grid_size.png  — speedup crossover across grid sizes
 
 USAGE:
     cd build
-    ctest --output-on-failure          # produces jacobi/tdma CSV files
+    ctest --output-on-failure           # produces regression CSVs + VTK
+    ./physi_sim                         # produces per-grid profiling CSVs
     python3 ../python/scripts/generate_benchmark_report.py \
         --output-dir . \
         --save-dir ../docs/figures
-
-REQUIRES profiling_results.csv from ProfilingHarness::writeCSV().
-If not present, GPU annotation is skipped gracefully.
+        --grid-size 100                 # reference grid for convergence panel
 """
 
 import argparse
@@ -26,65 +30,67 @@ sys.path.append(str(SCRIPT_DIR.parent))
 
 from physi_analytics import loaders, plotting
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate benchmark report figures.")
-    parser.add_argument("--output-dir", required=True, help="Directory with CSV files (build/)")
-    parser.add_argument("--save-dir",   required=True, help="Directory to save figures (docs/figures/)")
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--save-dir",   required=True)
+    parser.add_argument("--grid-size",  type=int, default=100,
+                        help="Reference grid for convergence panel (default: 100)")
     args = parser.parse_args()
 
     out_path  = Path(args.output_dir)
     save_path = Path(args.save_dir)
     save_path.mkdir(parents=True, exist_ok=True)
+    N = args.grid_size
 
-    # ── Load convergence histories ─────────────────────────────────────────────
-    print("[1/3] Loading convergence CSVs...")
-    jacobi = loaders.load_convergence_csv(out_path / "jacobi_convergence.csv")
-    tdma   = loaders.load_convergence_csv(out_path / "tdma_convergence.csv")
+    print(f"Output dir: {out_path}")
+    print(f"Save dir:   {save_path}")
+    print(f"Reference grid: {N}×{N}\n")
 
-    # ── Load ProfilingHarness results (optional — GPU data) ───────────────────
-    profiling_path = out_path / "profiling_results.csv"
-    profiling = None
-    if profiling_path.exists():
-        profiling = pd.read_csv(profiling_path)
-        profiling.columns = [c.strip() for c in profiling.columns]
-        print(f"[2/3] Loaded profiling data: {len(profiling)} solvers")
+    # ── Figure 1: Jacobi CPU vs GPU (the focused three-panel figure) ──────────
+    print("[1/4] Generating Jacobi CPU vs GPU figure...")
+    plotting.plot_jacobi_cpu_vs_gpu(
+        out_path, N,
+        save_path / "jacobi_cpu_vs_gpu.png")
+
+    # ── Figure 2: Temperature field ───────────────────────────────────────────
+    print("[2/4] Generating thermal field figure...")
+    vtk_path = out_path / "jacobi_final_map.vtk"
+    plotting.plot_thermal_field(
+        vtk_path, N, N,
+        save_path / "thermal_field.png")
+
+    # ── Figure 3: Jacobi vs TDMA convergence (regression test path) ───────────
+    print("[3/4] Generating Jacobi vs TDMA convergence...")
+    jacobi_csv = out_path / "jacobi_convergence.csv"
+    tdma_csv   = out_path / "tdma_convergence.csv"
+    if jacobi_csv.exists() and tdma_csv.exists():
+        jacobi = loaders.load_convergence_csv(jacobi_csv)
+        tdma   = loaders.load_convergence_csv(tdma_csv)
+        plotting.plot_residuals(jacobi, tdma,
+                                save_path / "convergence_comparison.png")
+        ratio = len(tdma) / len(jacobi)
+        print(f"  JacobiCPU: {len(jacobi):,} iters  "
+              f"final={jacobi['Residual'].iloc[-1]:.3e}")
+        print(f"  TDMACPU:   {len(tdma):,} iters  "
+              f"final={tdma['Residual'].iloc[-1]:.3e}")
+        print(f"  Ratio: {ratio:.3f}  ({1/ratio:.2f}× fewer iters)")
     else:
-        print("[2/3] profiling_results.csv not found — GPU annotation skipped")
-        print("      To generate: add harness.writeCSV('profiling_results.csv') to main.cpp")
+        print("  Skipped — run ctest first to produce regression CSVs")
 
-    # ── Figure 1: convergence curves + GPU point ──────────────────────────────
-    plotting.plot_convergence_with_gpu(
-        jacobi, tdma, profiling,
-        save_path / "convergence_with_gpu.png"
-    )
-
-    # ── Figure 2: benchmark bar charts ────────────────────────────────────────
-    if profiling is not None:
-        plotting.plot_benchmark_bars(
-            profiling,
-            save_path / "cpu_vs_gpu_benchmark.png"
-        )
-        print("[3/3] Benchmark bar chart saved.")
-    else:
-        print("[3/3] Skipped benchmark bars — no profiling_results.csv")
+    # ── Figure 4: GPU speedup vs grid size ────────────────────────────────────
+    print("[4/4] Generating GPU speedup vs grid size...")
+    plotting.plot_speedup_vs_grid_size(
+        out_path,
+        save_path / "gpu_speedup_vs_grid_size.png")
 
     # ── Summary ───────────────────────────────────────────────────────────────
-    ratio = len(tdma) / len(jacobi)
-    print(f"\n── Convergence summary ─────────────────────────────────────")
-    print(f"  JacobiCPU : {len(jacobi):5,} iters  "
-          f"final = {jacobi['Residual'].iloc[-1]:.3e}")
-    print(f"  TDMACPU   : {len(tdma):5,} iters  "
-          f"final = {tdma['Residual'].iloc[-1]:.3e}")
-    print(f"  TDMA/Jacobi ratio: {ratio:.3f}  ({1/ratio:.2f}× fewer iterations)")
-    if profiling is not None:
-        gpu = profiling[profiling["solver"] == "JacobiGPU"]
-        cpu = profiling[profiling["solver"] == "JacobiCPU"]
-        if not gpu.empty and not cpu.empty:
-            speedup = float(cpu["wall_time_ms"].iloc[0]) / float(gpu["wall_time_ms"].iloc[0])
-            print(f"  GPU speedup: {speedup:.2f}×  "
-                  f"({float(cpu['wall_time_ms'].iloc[0]):.1f}ms CPU → "
-                  f"{float(gpu['wall_time_ms'].iloc[0]):.1f}ms GPU)")
+    print(f"\n── Figures saved to {save_path} ───────────────────────────")
+    for fig in sorted(save_path.glob("*.png")):
+        print(f"  {fig.name}")
     print("─────────────────────────────────────────────────────────────")
+
 
 if __name__ == "__main__":
     main()

@@ -10,7 +10,8 @@ LinearDummySolver::LinearDummySolver(
 {
 }
 
-void LinearDummySolver::step(double dt, double dx) 
+void LinearDummySolver::step([[maybe_unused]] double dt, 
+                             [[maybe_unused]] double dx) 
 {
     if (m_cnt >= MAX_CNT) return;
     m_temperature[m_cnt] = 1 + static_cast<double>(m_cnt);

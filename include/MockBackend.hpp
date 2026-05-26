@@ -33,7 +33,9 @@ public:
         if (host_data.empty())
             std::cout << "[Mock] Syncing zeroed-buffer to host.\n";
     }
-    void compute(std::vector<double>& data, double alpha, double dt) {
+    void compute(std::vector<double>& data, 
+                 [[maybe_unused]] double alpha, 
+                 [[maybe_unused]]double dt) {
         std::cout << "[MockBackend] compute called on "
                   << data.size() << " elements.\n";
     }
