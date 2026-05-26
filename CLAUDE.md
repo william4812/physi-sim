@@ -82,3 +82,19 @@ cd build && ./physi_sim
 python3 ../python/scripts/generate_benchmark_report.py \
     --output-dir . --save-dir ../docs/figures
 ```
+
+## Phase 4 — feat/phase2-vram-resident
+
+Goal: eliminate per-iteration PCIe transfers from CudaJacobiSolver.
+Current:  step() = upload + kernel + download  (PCIe every iteration)
+Target:   upload() once → solve_vram() loop → download() once
+
+Expected result at 100×100:
+  Phase 1: 4,195 iters × 0.121ms/iter = 508ms
+  Phase 4: 4,195 iters × 0.001ms/iter = ~4ms  (18× faster than CPU)
+
+Key files:
+  include/solver/CudaJacobiSolver.hpp  — add upload/solve_vram/download
+  src/cuda/CudaJacobiSolver.cu         — implement the three new methods
+  tests/unit/test_cuda_jacobi_solver.cpp — add VRAMResident tests (TDD first)
+  src/main.cpp                          — ProfilingHarness on Phase 4 path
