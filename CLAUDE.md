@@ -74,3 +74,11 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - CMake: target_include_directories PRIVATE/PUBLIC never global include_directories
 - C++17, -Wall -Wextra, no warnings allowed in CI
 - Commit messages: type: description (feat/fix/build/docs/refactor/perf/test)
+
+## Daily benchmark workflow
+```bash
+cmake --build --preset hpc
+cd build && ./physi_sim
+python3 ../python/scripts/generate_benchmark_report.py \
+    --output-dir . --save-dir ../docs/figures
+```

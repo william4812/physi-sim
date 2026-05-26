@@ -22,6 +22,9 @@ void JacobiCPU::step(core::Grid2D& grid)
     for (int j = 1; j < ny - 1; ++j)
         for (int i = 1; i < nx - 1; ++i)
             grid(i, j) = T_new[j * nx + i];
+
+
+    history_.push_back(residual_);
 }
 
 double      JacobiCPU::residual() const { return residual_; }
