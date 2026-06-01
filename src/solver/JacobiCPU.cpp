@@ -27,6 +27,11 @@ void JacobiCPU::step(core::Grid2D& grid)
     history_.push_back(residual_);
 }
 
+std::vector<double> JacobiCPU::get_history() const 
+{
+    return history_; // Return your existing member
+}
+
 double      JacobiCPU::residual() const { return residual_; }
 std::string JacobiCPU::name()     const { return "JacobiCPU"; }
 

@@ -1,35 +1,35 @@
-import argparse
 from pathlib import Path
-import sys
+import plotting
 
-# Add the parent directory to the python path so we can import physi_analytics
-SCRIPT_DIR = Path(__file__).parent.resolve()
-sys.path.append(str(SCRIPT_DIR.parent))
+# 1. Define where files live
+data_dir = Path("./build")
+output_dir = Path("./docs/figures")
+output_dir.mkdir(parents=True, exist_ok=True)
 
-from physi_analytics import loaders, plotting
+# 2. Registry of your solvers (Update this if you add new ones)
+solvers = {
+    "JacobiCPU": data_dir / "JacobiCPU_100x100_convergence.csv",
+    "TDMACPU": data_dir / "TDMACPU_100x100_convergence.csv",
+    "JacobiGPUNoVram": data_dir / "JacobiGPUNoVram_100x100_convergence.csv",
+    "JacobiGPUVram": data_dir / "JacobiGPUVram_100x100_convergence.csv",
+}
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate convergence profile plots.")
-    parser.add_argument("--output-dir", type=str, required=True, help="Path to the C++ CSV output directory.")
-    parser.add_argument("--save-dir", type=str, required=True, help="Path to save the generated figures.")
+# 3. Generate Individual Plots
+for name, path in solvers.items():
+    if path.exists():
+        plotting.plot_single_convergence(path, name, output_dir / f"conv_{name}.png")
+
+# 4. Generate Specific Pairwise Comparisons
+comparisons = {
+    "JacobiCPU vs TDMACPU": ["JacobiCPU", "TDMACPU"],
+    "JacobiCPU vs JacobiGPUNoVram": ["JacobiCPU", "JacobiGPUNoVram"],
+    "JacobiGPUNoVram vs JacobiGPUVram": ["JacobiGPUNoVram", "JacobiGPUVram"]
+}
+
+for title, keys in comparisons.items():
+    # Build map for just this pair
+    pair_map = {k: solvers[k] for k in keys if solvers[k].exists()}
     
-    args = parser.parse_args()
-    
-    out_path = Path(args.output_dir)
-    save_path = Path(args.save_dir)
-    save_path.mkdir(parents=True, exist_ok=True)
-    
-    try:
-        print("[+] Loading convergence telemetry...")
-        jacobi = loaders.load_convergence_csv(out_path / 'jacobi_convergence.csv')
-        tdma = loaders.load_convergence_csv(out_path / 'tdma_convergence.csv')
-        
-        plot_file = save_path / 'convergence_comparison.png'
-        plotting.plot_residuals(jacobi, tdma, plot_file)
-        
-    except Exception as e:
-        print(f"[-] Error generating plot: {e}")
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()
+    # Create filename-friendly version of title
+    safe_name = title.replace(" vs ", "_vs_")
+    plotting.plot_comparison_convergence(pair_map, title, output_dir / f"cmp_{safe_name}.png")

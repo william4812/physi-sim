@@ -3,29 +3,35 @@
 #include "thermal/FortranBackend.hpp"
 #include "io/VTKWriter.hpp"
 #include "io/ConfigLoader.hpp"
-#include "solver/SolverFactory.hpp"      // 
-#include "solver/ProfilingHarness.hpp"    
-#include "core/Grid2D.hpp"               
+#include "solver/SolverFactory.hpp"      
+#include "solver/ProfilingHarness.hpp"
+#include "core/Grid2D.hpp"
 #ifdef PHYSI_SIM_CUDA_ENABLED
 #include "solver/CudaJacobiSolver.hpp"
 #endif
 #include "solver/JacobiCPU.hpp"
-#include <fstream>                       // CSV writing
+#include "solver/TDMACPU.hpp"       // direct use in comparison runners
+#include "solver/ISolver.hpp"       // solve_to_tol() takes ISolver&
+#include <fstream>                  // CSV writing
 #include <iostream>
 #include <memory>
 #include <chrono>
 #include <iomanip>
+#include <vector>
+#include <string>
 
 // forward declaration
-void run_thermal_benchmark(); 
-//auto params = physi_sim::io::ConfigLoader::load_json("../benchmark_config.json");
-void run_solver_benchmark(const physi_sim::core::SimulationParams& params);             
+void run_thermal_benchmark();
+void run_solver_benchmark(const physi_sim::core::SimulationParams& params);
+#ifdef PHYSI_SIM_CUDA_ENABLED
+void run_comparison_exports(const physi_sim::core::SimulationParams& params);           // controlled-comparison field/timing exporter
+#endif
 
 // ── Benchmark FSM states ──────────────────────────────────────────────────────
 // Mirrors SolverFSM pattern: explicit states, no implicit control flow.
 enum class BenchmarkState { INIT, RUNNING, WRITING, DONE };
 
-int main() 
+int main()
 {
     std::cout << "--- PhysiSim LBM Solver Starting (Mock Mode) ---\n";
 
@@ -39,12 +45,12 @@ int main()
 
     // 3. Inject the backend into the high-level solver
     // 3. Initialize Solver
-    // NOTE: You can only move 'backend' ONCE. 
+    // NOTE: You can only move 'backend' ONCE.
     // We give it to dSolver since that is what we are testing today.
     LinearDummySolver dSolver(std::move(backend), domain_size);
 
     // 4. Execute time steps to fill the linear profile
-    for (size_t i = 0; i < domain_size; ++i) 
+    for (size_t i = 0; i < domain_size; ++i)
     {
         std::cout << "Step " << i << ": ";
         dSolver.step(dt, dx);
@@ -61,7 +67,7 @@ int main()
     std::cout << "--- Simulation Complete ---\n";
 
 
-    try 
+    try
     {
         // Load config inside main() — not at global scope.
         // Global constructors run before exception handlers exist.
@@ -70,7 +76,13 @@ int main()
 
         run_thermal_benchmark();
         run_solver_benchmark(params);
-    } catch (const std::exception& e) 
+
+#ifdef PHYSI_SIM_CUDA_ENABLED
+        // Controlled-comparison ladder: writes cmp_*.vtk + cmp_timing.csv,
+        // consumed by the Python comparison figures.
+        run_comparison_exports(params);
+#endif
+    } catch (const std::exception& e)
     {
         std::cerr << "Hardware/Logic Error: " << e.what() << std::endl;
         return 1;
@@ -84,7 +96,7 @@ int main()
  * * 1st Principle: Isolate side-effects (IO) from the compute-intensive loop
  * to ensure timing accuracy.
  */
-void run_thermal_benchmark() 
+void run_thermal_benchmark()
 {
     using namespace physi_sim::thermal;
 
@@ -297,3 +309,166 @@ void run_solver_benchmark(const physi_sim::core::SimulationParams& params)
 
     std::cout << "\n=== Benchmark Complete ===\n";
 }
+
+
+#ifdef PHYSI_SIM_CUDA_ENABLED
+// ═════════════════════════════════════════════════════════════════════════════
+// Controlled-comparison exporter — modular runners + thin orchestrator.
+//
+// Each runner owns ONE experiment cell: it runs one solver variant to the same
+// tolerance, on the same grid + boundary condition, writes its converged field
+// to VTK, and returns a structured result. run_comparison_exports() composes
+// whichever variants you want — comment a line out to skip it.
+//
+// Each figure changes exactly ONE variable:
+//   Fig 1  algorithm      : JacobiCPU      vs TDMACPU         (CPU held)
+//   Fig 2  backend        : JacobiCPU      vs JacobiGPU step  (algorithm held)
+//   Fig 3  data residency : JacobiGPU step vs JacobiGPU VRAM  (backend held)
+//   Fig 4  algorithm/GPU  : (future) TDMA-GPU-VRAM vs Jacobi-GPU-VRAM
+//
+// Absolute L-inf tolerance (matches the unit-test field comparisons) — NOT the
+// normalized criterion the grid-sweep above uses. Do not mix the numbers.
+// ═════════════════════════════════════════════════════════════════════════════
+
+struct CompareConfig {
+    int    N   = 100;
+    double tol = 5e-4;     // absolute L-inf
+    int    cap = 20000;    // hard iteration ceiling
+};
+
+struct RunResult {
+    std::string variant;     // "JacobiCPU", "JacobiGPU_vram", ...
+    std::string backend;     // "cpu" | "cuda"
+    std::string residency;   // "host" | "per_iter" | "resident"
+    int         iterations = 0;
+    double      wall_ms     = 0.0;
+    std::string vtk_path;
+};
+
+// ── Shared helpers — the only common logic, factored once ─────────────────────
+static physi_sim::core::Grid2D fresh_grid(const CompareConfig& cfg)
+{
+    physi_sim::core::Grid2D g(cfg.N, cfg.N);
+    for (int x = 0; x < cfg.N; ++x) g(x, cfg.N - 1) = 100.0;   // T_top = 100
+    return g;
+}
+
+// Drive any ISolver to tolerance via step(); time physics only; return iters.
+static int solve_to_tol(physi_sim::solver::ISolver& s,
+                        physi_sim::core::Grid2D& g,
+                        const CompareConfig& cfg, double& ms)
+{
+    int it = 0;
+    const auto t0 = std::chrono::high_resolution_clock::now();
+    
+    do 
+    { 
+        s.step(g); ++it; 
+    } while (s.residual() > cfg.tol && it < cfg.cap);
+
+    ms = std::chrono::duration<double, std::milli>(
+             std::chrono::high_resolution_clock::now() - t0).count();
+    return it;
+}
+
+// ── One function per experiment cell ──────────────────────────────────────────
+RunResult runJacobiCPU(const CompareConfig& cfg)
+{
+    using namespace physi_sim;
+    auto g = fresh_grid(cfg); 
+    double ms; 
+    solver::JacobiCPU s;
+    int it = solve_to_tol(s, g, cfg, ms);
+    const std::string path = "cmp_cpu_jacobi_" + std::to_string(cfg.N) + ".vtk";
+    
+    io::VTKWriter().write_2d(g.data(), cfg.N, cfg.N, path);
+    return RunResult{ .variant="JacobiCPU", .backend="cpu", .residency="host",
+                      .iterations=it, .wall_ms=ms, .vtk_path=path };
+}
+
+RunResult runTDMACPU(const CompareConfig& cfg)
+{
+    using namespace physi_sim;
+    auto g = fresh_grid(cfg); 
+    double ms; 
+    solver::TDMACPU s;
+    int it = solve_to_tol(s, g, cfg, ms);
+    const std::string path = "cmp_cpu_tdma_"+ std::to_string(cfg.N) + ".vtk";
+    
+    io::VTKWriter().write_2d(g.data(), cfg.N, cfg.N, path);
+    return RunResult{ .variant="TDMACPU", .backend="cpu", .residency="host",
+                      .iterations=it, .wall_ms=ms, .vtk_path=path };
+}
+
+RunResult runJacobiGPUNoVram(const CompareConfig& cfg)  // step-based: PCIe every iteration
+{
+    using namespace physi_sim;
+    auto g = fresh_grid(cfg); double ms; solver::CudaJacobiSolver s;
+    int it = solve_to_tol(s, g, cfg, ms);               // step() = H2D + kernel + D2H per iter
+    const std::string path = "cmp_gpu_jacobi_novram_" + std::to_string(cfg.N) + ".vtk";
+    
+    io::VTKWriter().write_2d(g.data(), cfg.N, cfg.N, path);
+    return RunResult{ .variant="JacobiGPU_NoVram", .backend="cuda", .residency="per_iter",
+                      .iterations=it, .wall_ms=ms, .vtk_path=path };
+}
+
+RunResult runJacobiGPUVram(const CompareConfig& cfg)    // VRAM-resident
+{
+    using namespace physi_sim;
+    auto g = fresh_grid(cfg); 
+    double ms; 
+    solver::CudaJacobiSolver s;
+    const auto t0 = std::chrono::high_resolution_clock::now();
+    s.upload(g);
+    s.solve_vram(cfg.cap, cfg.tol);
+    s.download(g);
+    ms = std::chrono::duration<double, std::milli>(
+             std::chrono::high_resolution_clock::now() - t0).count();
+    const std::string path = "cmp_gpu_jacobi_vram_" + std::to_string(cfg.N) + ".vtk";
+    
+    io::VTKWriter().write_2d(g.data(), cfg.N, cfg.N, path);
+    // NOTE: if your header names this accessor differently
+    // (e.g. vram_iteration_count()), change the call below to match.
+    return RunResult{ .variant="JacobiGPU_Vram", .backend="cuda", .residency="resident",
+                      .iterations=s.get_vram_iterations(), .wall_ms=ms, .vtk_path=path };
+}
+
+// ── Orchestrator — call some or all; comment a line out to skip a variant ─────
+void run_comparison_exports(const physi_sim::core::SimulationParams& params)
+{
+    // NOTE: main.cpp is compiled by the host C++ compiler, which has no CUDA
+    // include path — so we can't call cudaGetDeviceCount() here. If CUDA is
+    // enabled but no device is present, the first cudaMalloc inside
+    // CudaJacobiSolver throws std::runtime_error, which main()'s try/catch
+    // already handles (same as run_solver_benchmark above).
+    CompareConfig cfg;     // one grid / tol / BC for ALL variants
+
+    if (params.compare_grid > 0)             // honor JSON only if present/valid
+        cfg.N = params.compare_grid;
+
+    const std::vector<RunResult> results = {
+        runJacobiCPU(cfg),       // Fig 1 + Fig 2 CPU side
+        runTDMACPU(cfg),         // Fig 1
+        runJacobiGPUNoVram(cfg), // Fig 2 + Fig 3 (no-VRAM, PCIe per iter)
+        runJacobiGPUVram(cfg),   // Fig 3 (VRAM-resident)
+        // runTDMAGPUVram(cfg),  // ← future (Phase 5): add the runner, uncomment here
+    };
+
+    // Single timing table — its only job is to serialize the results.
+    std::ofstream csv("cmp_timing.csv");
+    csv << "variant,backend,residency,grid_n,iterations,wall_time_ms\n"
+        << std::fixed << std::setprecision(4);
+    for (const auto& r : results)
+        csv << r.variant << "," << r.backend << "," << r.residency << ","
+            << cfg.N << "," <<  r.iterations << "," << r.wall_ms << "\n";
+
+    std::cout << "\n=== Comparison exports — " << results.size()
+              << " variants ===\n";
+    for (const auto& r : results)
+        std::cout << "  " << r.variant << " [" << cfg.N << "x" << cfg.N << "]: "
+          << r.iterations << " it / " << r.wall_ms << " ms  → " << r.vtk_path << "\n";
+        //std::cout << "  " << r.variant << ": " << r.iterations
+        //          << " it / " << r.wall_ms << " ms  → " << r.vtk_path << "\n";
+    std::cout << "[IO] cmp_timing.csv\n";
+}
+#endif // PHYSI_SIM_CUDA_ENABLED

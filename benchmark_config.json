@@ -10,6 +10,7 @@
         "grid_sizes":  [50, 100, 200, 500],
         "tolerance":   1e-4,
         "run_gpu":     true,
-        "output_dir":  "."
+        "output_dir":  ".",
+        "compare_grid": 100
     }
 }

@@ -67,6 +67,7 @@ protected:
     std::unique_ptr<physi_sim::core::Grid2D> grid;
 };
 
+
 // ---------------------------------------------------------------------------
 // 1. Contract tests — written first, define the ISolver interface obligations
 // ---------------------------------------------------------------------------
@@ -277,5 +278,119 @@ TEST_F(CudaJacobiSolverTest, IterationCountMatchesCPUJacobi)
         << "GPU iters=" << gpu_iters << " CPU iters=" << cpu_iters
         << " ratio=" << ratio
         << " — stencil mismatch suspected";
+}
+
+// ── Phase 2: VRAM-resident interface ─────────────────────────────────────────
+
+TEST_F(CudaJacobiSolverTest, SolveVRAMConvergesToTolerance)
+{
+    // Proves the new path converges to the same residual as step()-based path.
+    physi_sim::solver::CudaJacobiSolver solver;
+    solver.upload(*grid);
+    solver.solve_vram(10000, tolerance);
+    solver.download(*grid);
+
+    EXPECT_LT(solver.residual(), tolerance)
+        << "VRAM-resident solve did not converge";
+}
+
+TEST_F(CudaJacobiSolverTest, SolveVRAMIterationCountMatchesStepBased)
+{
+    // solve_vram and step() use the same stencil → they converge in the same
+    // number of iterations (within stride/FP noise). This tests convergence-
+    // detection equivalence, NOT the field (that is the next test).
+    physi_sim::solver::CudaJacobiSolver vram_solver;
+    vram_solver.upload(*grid);
+    vram_solver.solve_vram(10000, tolerance);
+    vram_solver.download(*grid);
+    const int vram_iters = vram_solver.get_vram_iterations();   // use your header's accessor
+
+    physi_sim::core::Grid2D grid2(nx, ny);
+    for (int x = 0; x < nx; ++x)
+        for (int y = 0; y < ny; ++y)
+            grid2(x, y) = (y == ny - 1) ? 100.0 : 0.0;
+
+    physi_sim::solver::CudaJacobiSolver step_solver;
+    while (step_solver.residual() > tolerance || step_solver.residual() == 0.0)
+        step_solver.step(grid2);
+    const int step_iters = static_cast<int>(step_solver.history().size());
+
+    EXPECT_NEAR(static_cast<double>(vram_iters) / step_iters, 1.0, 0.05)
+        << "vram_iters=" << vram_iters << " step_iters=" << step_iters;
+}
+
+TEST_F(CudaJacobiSolverTest, SolveVRAMFieldMatchesStepBased)
+{
+    // Same kernel + same iteration count + same initial field → identical
+    // field (the stencil is deterministic per cell). We compare at a FIXED
+    // iteration count, not at convergence: with the residual checked every
+    // RESIDUAL_STRIDE steps, solve_vram stops a few dozen iterations past
+    // where step() stops, and slow Jacobi convergence turns that into a field
+    // difference far above 5e-4. Fixing the iteration count removes that confound.
+    constexpr int FIXED_ITERS = 2000;
+
+    // tol = -1.0 disables early stopping, so it runs exactly FIXED_ITERS.
+    physi_sim::solver::CudaJacobiSolver vram_solver;
+    vram_solver.upload(*grid);
+    vram_solver.solve_vram(FIXED_ITERS, -1.0);
+    vram_solver.download(*grid);
+
+    physi_sim::core::Grid2D grid2(nx, ny);
+    for (int x = 0; x < nx; ++x)
+        for (int y = 0; y < ny; ++y)
+            grid2(x, y) = (y == ny - 1) ? 100.0 : 0.0;
+
+    physi_sim::solver::CudaJacobiSolver step_solver;
+    for (int i = 0; i < FIXED_ITERS; ++i)
+        step_solver.step(grid2);
+
+    int mismatches = 0;
+    for (int x = 1; x < nx - 1; ++x)
+        for (int y = 1; y < ny - 1; ++y)
+            if (std::abs((*grid)(x, y) - grid2(x, y)) > tolerance)
+                ++mismatches;
+
+    EXPECT_EQ(mismatches, 0)
+        << mismatches << " interior cells differ after " << FIXED_ITERS
+        << " identical iterations";
+}
+
+TEST_F(CudaJacobiSolverTest, SolveVRAMFasterThanStepBased)
+{
+    // VRAM-resident solve must be faster than step()-based on same grid.
+    // This is the Phase 4 performance proof.
+    using clock = std::chrono::steady_clock;
+
+    // Phase 1 timing
+    physi_sim::core::Grid2D g1(nx, ny);
+    for (int x = 0; x < nx; ++x)
+        for (int y = 0; y < ny; ++y)
+            g1(x, y) = (y == ny - 1) ? 100.0 : 0.0;
+    physi_sim::solver::CudaJacobiSolver s1;
+    auto t0 = clock::now();
+    while (s1.residual() > tolerance || s1.residual() == 0.0)
+        s1.step(g1);
+    double ms_phase1 = std::chrono::duration<double,std::milli>(
+        clock::now() - t0).count();
+
+    // Phase 4 timing
+    physi_sim::core::Grid2D g2(nx, ny);
+    for (int x = 0; x < nx; ++x)
+        for (int y = 0; y < ny; ++y)
+            g2(x, y) = (y == ny - 1) ? 100.0 : 0.0;
+    physi_sim::solver::CudaJacobiSolver s2;
+    auto t1 = clock::now();
+    s2.upload(g2);
+    s2.solve_vram(10000, tolerance);
+    s2.download(g2);
+    double ms_phase4 = std::chrono::duration<double,std::milli>(
+        clock::now() - t1).count();
+
+    std::cout << "\n[Phase4Speedup] Phase1=" << ms_phase1
+              << "ms  Phase4=" << ms_phase4
+              << "ms  Speedup=" << ms_phase1/ms_phase4 << "×\n";
+
+    EXPECT_LT(ms_phase4, ms_phase1)
+        << "Phase 4 must be faster than Phase 1";
 }
 #endif

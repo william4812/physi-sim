@@ -98,7 +98,7 @@ contains
         integer(c_int), value    :: nx, ny
         real(c_double), intent(in)  :: T(nx, ny)      ! Current state
         real(c_double), intent(out) :: T_new(nx, ny)  ! Next state
-        real(c_double), intent(out) :: res_norm       ! L2-norm residual
+        real(c_double), intent(out) :: res_norm       ! L∞-norm residual
 
         integer :: i, j
         real(c_double) :: current_err
@@ -154,7 +154,7 @@ contains
         T(:, j) = x_line
     end do
 
-    ! Calculate Max Relative Error
+    ! Calculate L∞
     res_norm = 0.0
     do j = 1, ny
         do i = 1, nx

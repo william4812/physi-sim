@@ -77,6 +77,7 @@ add_executable(physi_tests
     tests/unit/test_backend_dispatch.cpp
     tests/unit/test_solver_factory.cpp
     tests/unit/test_solver_fsm.cpp
+    tests/unit/test_comparison_variants.cpp
 
     # integration
     tests/integration/test_fortran_interop.cpp

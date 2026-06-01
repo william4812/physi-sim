@@ -658,3 +658,77 @@ def plot_thermal_field(vtk_path: Path,
                 facecolor="white")
     print(f"[+] §2 thermal field saved to: {save_path}")
     plt.close(fig)
+
+def plot_generic_comparison(mesh1, mesh2, s1, s2, save_path):
+    # 1. Extract dimensions and reshape
+    # Assuming standard square grid from your VTK output
+    nx, ny = mesh1.dimensions[0], mesh1.dimensions[1]
+
+    # Reshape (Ny, Nx) and Transpose to align [x, y] with [col, row]
+    t1 = mesh1.point_data["Temperature"].reshape(nx, ny)
+    t2 = mesh2.point_data["Temperature"].reshape(nx, ny)
+    t_diff = np.abs(t1 - t2)
+
+    
+    # 2. Setup the plot figure
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+    # 3. Define mapping for the 3 subplots
+    plot_configs = [
+        {'data': t1, 'title': s1, 'cmap': 'jet', 'vmin': 0, 'vmax': 100},
+        {'data': t2, 'title': s2, 'cmap': 'jet', 'vmin': 0, 'vmax': 100},
+        {'data': t_diff, 'title': f"Difference (|{s1} - {s2}|)", 'cmap': 'magma', 'vmin': None, 'vmax': None}
+    ]
+
+    for ax, cfg in zip(axes, plot_configs):
+        # origin='lower' is critical for Cartesian alignment
+        im = ax.imshow(cfg['data'], cmap=cfg['cmap'], origin='lower',
+                       vmin=cfg['vmin'], vmax=cfg['vmax'])
+
+        ax.set_title(cfg['title'], fontsize=12, fontweight='bold')
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+
+        # Add colorbar
+        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        if cfg['cmap'] == 'magma':
+            cbar.formatter.set_powerlimits((0, 0))
+            cbar.update_ticks()
+
+    # 4. Finalize
+    plt.tight_layout()
+    plt.savefig(str(save_path), dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print(f"[+] Comparison successfully saved to: {save_path}")
+
+
+def plot_single_convergence(csv_path, solver_name, save_path):
+    df = pd.read_csv(csv_path)
+    plt.figure(figsize=(8, 5))
+    plt.plot(df['Iteration'], df['Residual'], label=solver_name, linewidth=2)
+    plt.yscale('log')
+    plt.title(f"Convergence: {solver_name}")
+    plt.xlabel("Iteration")
+    plt.ylabel("Residual (L-inf)")
+    plt.grid(True, which="both", linestyle='--', alpha=0.6)
+    plt.savefig(save_path, dpi=150)
+    plt.close()
+
+def plot_comparison_convergence(data_map, title, save_path):
+    """
+    data_map: {'LabelName': 'path/to/csv'}
+    """
+    plt.figure(figsize=(9, 6))
+    for name, path in data_map.items():
+        df = pd.read_csv(path)
+        plt.plot(df['Iteration'], df['Residual'], label=name, alpha=0.8)
+
+    plt.yscale('log')
+    plt.title(title)
+    plt.xlabel("Iteration")
+    plt.ylabel("Residual (L-inf)")
+    plt.legend()
+    plt.grid(True, which="both", linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150)
+    plt.close()
