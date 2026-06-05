@@ -2,8 +2,7 @@ name: physi-sim CI
 
 on:
   push:
-    #branches: [ "main" ]
-    branches: [ "**" ] # runs on every branches
+    branches: [ "**" ]        # run on every branch
   pull_request:
     branches: [ "main" ]
 
@@ -12,31 +11,37 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      # This is the "Build Matrix" - it runs the pipeline twice simultaneously.
       fail-fast: false
       matrix:
-        build_type: [Debug, Release]
+        # One name drives configure + build + test (same name in all three
+        # preset namespaces).
+        #   hpc-release = optimized + hardened (also what CD ships)
+        #   hpc-debug   = -O0 -g, bounds-checked: gfortran -fcheck=all on the
+        #                 kernels + libstdc++ _GLIBCXX_ASSERTIONS on C++ access,
+        #                 so an out-of-bounds index in the residual path is caught.
+        preset: [ hpc-release, hpc-debug ]
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v5
+      - name: Checkout Code
+        uses: actions/checkout@v5
 
-    - name: Install Dependencies
-      # GitHub Ubuntu runners have CMake/GCC, but installing gtest ensures tests compile
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake g++ libgtest-dev
+      - name: Install Dependencies
+        # gfortran is explicit: the project is LANGUAGES CXX Fortran, so CMake
+        # needs a Fortran compiler at configure time, and the presets set
+        # CMAKE_Fortran_FLAGS. Don't rely on the runner image shipping it.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ gfortran libgtest-dev
 
-    - name: Configure CMake
-      # Generates the build files in the /build directory
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
 
-    - name: Build Code
-      # Compiles your LBM mock solver and tests
-      run: cmake --build ${{github.workspace}}/build --config ${{matrix.build_type}} -j 4
+      - name: Build
+        # binaryDir comes from the preset (build/ or build-debug/). -j$(nproc)
+        # because a bare `cmake --build` is serial with the Makefiles generator.
+        run: cmake --build --preset ${{ matrix.preset }} -j$(nproc)
 
-    - name: Run Tests
-      # Navigates to the build directory and runs your tests.
-      # Note: This will fail initially because your 'SolverLogicTest.IncrementsCountersCorrectly' is currently failing, which is exactly what CI is supposed to catch!
-      working-directory: ${{github.workspace}}/build
-      run: ctest -C ${{matrix.build_type}} --output-on-failure
+      - name: Test
+        # ctest reads the build dir from the preset; output-on-failure is baked
+        # into the test preset, so no -C / --output-on-failure flags needed.
+        run: ctest --preset ${{ matrix.preset }}

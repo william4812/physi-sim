@@ -78,6 +78,8 @@ add_executable(physi_tests
     tests/unit/test_solver_factory.cpp
     tests/unit/test_solver_fsm.cpp
     tests/unit/test_comparison_variants.cpp
+    tests/unit/test_residual_history_csv.cpp
+    tests/unit/test_residual_and_convergence.cpp
 
     # integration
     tests/integration/test_fortran_interop.cpp

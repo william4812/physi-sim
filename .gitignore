@@ -55,3 +55,4 @@ __pycache__/
 test_config.json
 build-san/
 build-tsan/
+build-debug/

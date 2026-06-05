@@ -111,13 +111,26 @@ contains
         T_new(:, 1) = T(:, 1)
         T_new(:, ny) = T(:, ny)
 
-        ! 2. 5-Point Jacobi Stencil (Interior Nodes)
         ! Fortran is column-major; inner loop on 'i' maximizes cache hits
         do j = 2, ny - 1
             do i = 2, nx - 1
                 ! T_new = average of 4 neighbors
                 T_new(i, j) = 0.25d0 * (T(i+1, j) + T(i-1, j) + T(i, j+1) + T(i, j-1))
-                
+                        
+                ! ── Increment residual: the cheap, in-kernel convergence signal ───────
+                ! Accumulates the L-infinity norm of the Jacobi INCREMENT
+                ! current_err = T_new(i,j) - T(i,j)        →  res_norm = max_ij |Delta_ij|
+                ! Units: Kelvin, interior nodes only.
+                !
+                ! This is NOT the equation residual ||b - A.T||. Because the update is
+                ! T_new = 1/4 * (sum of 4 neighbours), the increment is EXACTLY one
+                ! quarter of the equation residual:  Delta_ij = 1/4 * (nbrs - 4 T_ij).
+                ! So the kernel returns a faithful but SCALED (x1/4) proxy, for free, as
+                ! a by-product of the update. The true, algorithm-independent residual
+                ! is computed in C++ by core::laplace_residual_linf. The exact 1/4 tie is
+                ! locked by test Convergence.EquationEqualsFourTimesIncrementEveryStep.
+                ! 2. 5-Point Jacobi Stencil (Interior Nodes)
+                ! Fortran is column-major; inner loop on 'i' maximizes cache hits
                 current_err = abs(T_new(i, j) - T(i, j))   ! absolute L∞, no division
                 if (current_err > res_norm) res_norm = current_err
             end do
@@ -158,6 +171,14 @@ contains
     res_norm = 0.0
     do j = 1, ny
         do i = 1, nx
+            ! ── Increment residual: same DEFINITION as Jacobi, different MEANING ──────
+            ! res_norm = max_ij |T(i,j) - T_old(i,j)|  — L-infinity of the increment,
+            ! identical in FORM to the Jacobi kernel. But TDMA is line-implicit, so its
+            ! preconditioner is a tridiagonal solve, not the diagonal: the increment is
+            ! NOT 1/4 of the equation residual here, and the increment-to-true-error
+            ! ratio differs from Jacobi's. THAT is precisely why a fair Jacobi-vs-TDMA
+            ! comparison must use the equation residual, not this increment.
+            ! (Loop spans all nodes; Dirichlet boundaries don't move, contributing 0.)
             res_norm = max(res_norm, abs(T(i,j) - T_old(i,j)))   ! absolute L∞
         end do
     end do
