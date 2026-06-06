@@ -37,6 +37,8 @@ core::SimulationParams ConfigLoader::load_json(const std::string& path)
             params.run_gpu    = b["run_gpu"].get<bool>();
         if (b.contains("output_dir"))
             params.output_dir = b["output_dir"].get<std::string>();
+        if (b.contains("compare_grid"))
+            params.compare_grid = b["compare_grid"].get<int>();
     }
 
     return params;

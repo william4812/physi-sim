@@ -16,6 +16,9 @@ public:
     // history()[i] = residual after step i+1.
     // Empty before first step(). Used to write convergence CSV.
     [[nodiscard]] const std::vector<double>& history() const { return history_; }
+    
+    const std::vector<double>& get_history() const override;
+
 private:
     double residual_ = 0.0;
     std::vector<double> history_;

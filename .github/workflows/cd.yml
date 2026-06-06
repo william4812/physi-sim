@@ -3,29 +3,30 @@ name: physi-sim CD
 on:
   push:
     tags:
-      - 'v*' # Trigger only on version tags (e.g., v1.0.0)
+      - 'v*'   # Trigger only on version tags (e.g., v1.0.0)
 
 jobs:
   deploy-assets:
     runs-on: ubuntu-latest
     permissions:
-        contents: write
-    
+      contents: write
+
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Build Optimized Binary
+      - name: Build hardened release binary
+        # Builds via the hpc-release preset → binaryDir is build/, so the
+        # executable lands at build/physi_sim exactly as the release step expects.
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake g++ libgtest-dev
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release
+          sudo apt-get install -y cmake g++ gfortran libgtest-dev
+          cmake --preset hpc-release
+          cmake --build --preset hpc-release -j$(nproc)
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          # This creates the "Artifact" on your GitHub Release page
-          files: build/physi_sim 
+          files: build/physi_sim
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -17,6 +17,7 @@ struct ProfilingRecord {
     int         iterations     = 0;
     double      final_residual = 0.0;
     double      normalized_residual = 0.0; 
+    double      equation_residual   = 0.0;   // NEW: unified ||b - A·T||_inf on final field
     double      wall_time_ms   = 0.0;
     bool        converged      = false;
     std::string fsm_state;      // "CONVERGED" | "FAILED"  ← Phase 2 addition

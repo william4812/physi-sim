@@ -16,6 +16,9 @@ void JacobiCPU::step(core::Grid2D& grid)
     // Fortran T(nx,ny) column-major accesses same offsets — no transpose needed.
     std::vector<double> T_new(nx * ny);
 
+    // laplace_2d_jacobi writes the INCREMENT residual ||T_new - T_old||_inf into
+    // residual_ (see diffusion_kernel.f90 line 121): the cheap per-step stopping
+    // signal, a by-product of the update — NOT the equation residual.
     laplace_2d_jacobi(grid.data(), T_new.data(), nx, ny, &residual_);
 
     // Copy result back — Fortran preserves boundary values in T_new
@@ -24,7 +27,16 @@ void JacobiCPU::step(core::Grid2D& grid)
             grid(i, j) = T_new[j * nx + i];
 
 
+    // Record the increment-vs-iteration curve. We deliberately do NOT compute
+    // the equation residual in the solver — measuring the field is the harness's
+    // job (low coupling). Validity locked by
+    // ResidualHistoryCSV.JacobiCPUHistoryIsValidSequence.
     history_.push_back(residual_);
+}
+
+const std::vector<double>& JacobiCPU::get_history() const 
+{
+    return history_; // Return your existing member
 }
 
 double      JacobiCPU::residual() const { return residual_; }

@@ -24,6 +24,7 @@ struct SimulationParams {
     std::vector<int> grid_sizes = {100, 500};  // NX=NY for each run
     bool             run_gpu    = true;         // include JacobiGPU in sweep
     std::string      output_dir = ".";          // CSV output directory
+    int              compare_grid = 0;          // controlled-comparison grid (0 = use default 100)
 };
 
 } // namespace physi_sim::core
