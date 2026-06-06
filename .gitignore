@@ -1,70 +1,44 @@
-# Fortran compilation artifacts
-*.mod
-*.smod
+# ---- build directories (all variants) ----
+build*/
+.deps/
 
-# Vim swap files
-.*.sw?
-
-# Prerequisites & Editors
-*.swp
-*.swo
-.DS_Store
-
-# Build artifacts (General)
-build/
-bin/
-lib/
-output/
-_deps/
-
-# Compiled Objects/Binaries
+# ---- compiled / build artifacts ----
 *.o
-*.o.d
 *.a
-*.bin
-/physi_sim
-/physi_tests
+*.mod
+a.out
 
-# CMake generated files
-CMakeCache.txt
-CMakeFiles/
-CMakeLists.txt.user
-cmake_install.cmake
-Makefile
-CTestTestfile.cmake
-physi_tests[1]_include.cmake
-physi_tests[1]_tests.cmake
+# ---- logs ----
+*.log
 
-# LaTeX (Recursive to catch subdirectories like docs/chapters/)
-**/*.aux
-**/*.fdb_latexmk
-**/*.fls
-**/*.log
-**/*.out
-**/*.toc
-**/*.pdf
-**/*.synctex.gz
+# ---- LaTeX intermediates (docs/) — .tex and .pdf stay tracked ----
+*.aux
+*.toc
+*.fls
+*.fdb_latexmk
+*.out
+*.synctex.gz
 
-# Simulation Results (Keep your repo clean of large data)
+# ---- Python ----
+__pycache__/
+*.pyc
+
+# ---- simulation data outputs (regenerated; never tracked) ----
 *.vtk
 *.csv
+output/
 Testing/
-__pycache__/
-*.pyc
-.deps/
-test_config.json
-build-san/
-build-tsan/
-build-debug/
-python/legacy/
 
-build/
-.deps/
-__pycache__/
-*.pyc
+# ---- exceptions: config that must stay tracked ----
+!benchmark_config.json
+# add  !tests/regression/data/*.csv  here if you commit baseline data
 
-build/
-.deps/
-__pycache__/
-*.pyc
+# ---- local-only ----
 directory_structure.txt
+.gitignore.bak
+
+# editor swap / backup files
+*.sw[a-p]
+*~
+python/legacy/
+clean_repo.sh

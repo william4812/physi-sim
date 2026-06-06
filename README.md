@@ -75,7 +75,6 @@ physics. CUDA owns GPU compute. Python owns analytics.
 │  scripts/plot_walltime.py     — wall-time scaling + residency   │
 │  scripts/plot_thermal_map.py  — VTK field heatmaps (no pyvista) │
 │  scripts/make_figures.py      — one-run orchestrator (composes) │
-│  legacy/                      — retired physi_analytics stack    │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
