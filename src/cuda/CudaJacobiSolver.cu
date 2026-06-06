@@ -397,7 +397,7 @@ void CudaJacobiSolver::download(core::Grid2D& grid) const
             + cudaGetErrorString(err));
 }
 
-std::vector<double> CudaJacobiSolver::get_history() const
+const std::vector<double>& CudaJacobiSolver::get_history() const
 {
     return m_history;
 }

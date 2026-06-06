@@ -52,7 +52,7 @@ public:
      */
     virtual std::string name()     const = 0;
 
-    virtual std::vector<double> get_history() const = 0;
+    virtual const std::vector<double>& get_history() const = 0;
 };
 
 enum class HardwareBackend { CPU, CUDA };

@@ -21,6 +21,7 @@
 #include <string>
 
 // forward declaration
+void run_1D_benchmark();
 void run_thermal_benchmark();
 void run_solver_benchmark(const physi_sim::core::SimulationParams& params);
 #ifdef PHYSI_SIM_CUDA_ENABLED
@@ -32,6 +33,33 @@ void run_comparison_exports(const physi_sim::core::SimulationParams& params);   
 enum class BenchmarkState { INIT, RUNNING, WRITING, DONE };
 
 int main()
+{
+    //run_1D_benchmark();
+    
+    try
+    {
+        // Load config inside main() — not at global scope.
+        // Global constructors run before exception handlers exist.
+        const auto params =
+            physi_sim::io::ConfigLoader::load_json("../benchmark_config.json");
+
+        //run_thermal_benchmark();
+        run_solver_benchmark(params);
+
+#ifdef PHYSI_SIM_CUDA_ENABLED
+        // Controlled-comparison ladder: writes cmp_*.vtk + cmp_timing.csv,
+        // consumed by the Python comparison figures.
+        run_comparison_exports(params);
+#endif
+    } catch (const std::exception& e)
+    {
+        std::cerr << "Hardware/Logic Error: " << e.what() << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
+void run_1D_benchmark()
 {
     std::cout << "--- PhysiSim LBM Solver Starting (Mock Mode) ---\n";
 
@@ -65,31 +93,7 @@ int main()
     writer.write(field, "thermal_results.vtk");
 
     std::cout << "--- Simulation Complete ---\n";
-
-
-    try
-    {
-        // Load config inside main() — not at global scope.
-        // Global constructors run before exception handlers exist.
-        const auto params =
-            physi_sim::io::ConfigLoader::load_json("../benchmark_config.json");
-
-        run_thermal_benchmark();
-        run_solver_benchmark(params);
-
-#ifdef PHYSI_SIM_CUDA_ENABLED
-        // Controlled-comparison ladder: writes cmp_*.vtk + cmp_timing.csv,
-        // consumed by the Python comparison figures.
-        run_comparison_exports(params);
-#endif
-    } catch (const std::exception& e)
-    {
-        std::cerr << "Hardware/Logic Error: " << e.what() << std::endl;
-        return 1;
-    }
-    return 0;
 }
-
 
 /**
  * @brief Executes a high-performance thermal simulation benchmark.
@@ -237,11 +241,21 @@ void run_solver_benchmark(const physi_sim::core::SimulationParams& params)
                     if (e.backend == HardwareBackend::CPU
                         && e.type == SolverType::JACOBI)
                     {
-                        auto* cpu = dynamic_cast<
+                        auto* jacobiCpu = dynamic_cast<
                             solver::JacobiCPU*>(&h->solver());
-                        if (cpu) hist_ptr = &cpu->history();
+                        if (jacobiCpu) hist_ptr = &jacobiCpu->get_history();
                     }
 
+                    else if (e.backend == HardwareBackend::CPU
+                             && e.type == SolverType::TDMA)
+                    {
+                        auto* tdmaCpu = dynamic_cast<
+                            solver::TDMACPU*>(&h->solver());
+
+                        // NOTE: If your TDMACPU header uses 'history()' instead
+                        // of 'get_history()', change the method call below to match.
+                        if (tdmaCpu) hist_ptr = &tdmaCpu->get_history();
+                    }
 #ifdef PHYSI_SIM_CUDA_ENABLED
                     if (e.backend == HardwareBackend::CUDA)
                     {

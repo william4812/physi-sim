@@ -13,7 +13,7 @@ void TDMACPU::step(core::Grid2D& grid)
     history_.push_back(residual_);
 }
 
-std::vector<double> TDMACPU::get_history() const
+const std::vector<double>& TDMACPU::get_history() const
 {                                                             
     return history_; // Return your existing member 
 }

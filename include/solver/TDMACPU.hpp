@@ -14,7 +14,7 @@ public:
 
     //const std::vector<double>& history() const override { return history_; }
 
-    std::vector<double> get_history() const override;
+    const std::vector<double>& get_history() const override;
 private:
     double residual_ = 0.0;
     std::vector<double> history_; // Track it here

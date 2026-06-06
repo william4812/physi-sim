@@ -115,7 +115,7 @@ public:
      */
     [[nodiscard]] const std::vector<double>& history() const { return m_history; }
 
-    std::vector<double> get_history() const override;
+    const std::vector<double>& get_history() const override;
 
     // Lifetime: upload → solve_vram → download.
     // Calling solve_vram() without upload() throws std::logic_error.
