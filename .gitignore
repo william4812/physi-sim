@@ -57,3 +57,13 @@ build-san/
 build-tsan/
 build-debug/
 python/legacy/
+
+build/
+.deps/
+__pycache__/
+*.pyc
+
+build/
+.deps/
+__pycache__/
+*.pyc
