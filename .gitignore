@@ -56,3 +56,4 @@ test_config.json
 build-san/
 build-tsan/
 build-debug/
+python/legacy/
