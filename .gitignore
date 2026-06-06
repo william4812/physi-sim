@@ -67,3 +67,4 @@ build/
 .deps/
 __pycache__/
 *.pyc
+directory_structure.txt
