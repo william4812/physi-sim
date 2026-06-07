@@ -1,7 +1,5 @@
 // include/solver/ConcurrentSolverRunner.hpp
 //
-// Phase 3 — concurrent dispatch of independent ISolver instances.
-//
 // DESIGN: static run() — no instance state, no lifecycle to manage.
 // Matches the calling convention of a Fortran `pure` subroutine or a
 // CUDA kernel launch: inputs in, outputs out, zero side effects.
@@ -38,6 +36,19 @@ struct RunConfig
     bool   verbose   = false;
 };
 
+/**
+ * @class ConcurrentSolverRunner
+ * @brief Dispatches multiple solver instances concurrently using a shared-nothing model.
+ *
+ * @details
+ * **Concurrency Principle:** Race-free execution is achieved through explicit memory
+ * isolation. Each `std::async` task receives a deep copy of the grid and an
+ * independent `ProfilingHarness`, eliminating the need for shared mutable state.
+ *
+ * **Performance Alignment:** The implementation exploits the contiguous memory
+ * layout of `Grid2D`. Since each thread operates on a unique memory block, cache
+ * lines remain local, maximizing prefetcher efficiency and preventing false sharing.
+ */
 class ConcurrentSolverRunner 
 {
 public:

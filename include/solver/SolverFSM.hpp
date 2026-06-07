@@ -30,6 +30,20 @@ constexpr std::string_view to_string(SolverState s) noexcept
   return "UNKNOWN";
 }
 
+/**
+ * @class SolverFSM
+ * @brief Thread-safe Finite State Machine governing the solver lifecycle.
+ *
+ * @details
+ * **Concurrency Contract:** The state is managed via `std::atomic<SolverState>` with
+ * memory_order_acquire/release semantics. This provides lock-free, thread-safe polling
+ * for monitoring threads without the latency penalty of mutex contention.
+ *
+ * **Defensive Programming:** Every transition method enforces strict pre-state
+ * requirements via `assertState()`. Invalid state transitions trigger a
+ * `std::logic_error`, ensuring the solver fails fast rather than executing
+ * indeterminate physics.
+ */
 class SolverFSM 
 {
 public: 

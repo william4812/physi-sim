@@ -2,13 +2,6 @@
  * @file CudaJacobiSolver.hpp
  * @brief GPU Jacobi solver — ISolver for sm_75, Phase 2: VRAM-resident solve.
  *
- * PHASE 1 (feat/cuda-jacobi):
- *   step() uploads host→device, runs one Jacobi iteration, downloads
- *   device→host. PCIe paid every iteration — GPU loses to CPU at all
- *   tested grid sizes (50×50 to 500×500).
- *
- * PHASE 2 (feat/phase2-vram-resident):
- *   Three explicit lifecycle methods replace the per-step transfer:
  *
  *     upload(grid)              — H2D once (PCIe paid once)
  *     solve_vram(max_iter, tol) — full Jacobi loop entirely on device
@@ -41,6 +34,19 @@
 namespace physi_sim::solver 
 {
 
+/**
+ * @class CudaJacobiSolver
+ * @brief GPU-accelerated Jacobi solver utilizing persistent VRAM buffers.
+ *
+ * @details
+ * **Resource Contract:** Follows an explicit lifetime pattern: `upload` → `solve_vram` → 
+ * `download`. This minimizes PCIe bottlenecking by amortizing host-device transfer 
+ * overhead to O(1) per solver run, regardless of iteration count.
+ *
+ * **Memory Architecture:** Device buffers are lazily allocated and persistent. 
+ * This design is "edge-ready" by construction, providing deterministic allocation 
+ * behavior crucial for embedded platforms like Jetson.
+ */
 class CudaJacobiSolver : public ISolver 
 {
 public:
