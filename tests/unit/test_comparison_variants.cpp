@@ -20,7 +20,8 @@
 
 using namespace physi_sim;
 
-namespace {
+namespace 
+{
 constexpr int    N   = 60;       // small enough to be fast, big enough to be real
 constexpr double TOL = 5e-4;     // absolute L-inf, same as the exporter
 constexpr int    CAP = 20000;

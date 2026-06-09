@@ -2,6 +2,7 @@
 
 add_library(cuda_solver STATIC
     CudaJacobiSolver.cu
+    CudaTDMASolver.cu
 )
 
 target_include_directories(cuda_solver PUBLIC

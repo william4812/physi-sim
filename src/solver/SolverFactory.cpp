@@ -4,14 +4,17 @@
 #include "solver/TDMACPU.hpp"
 #ifdef PHYSI_SIM_CUDA_ENABLED
 #include "solver/CudaJacobiSolver.hpp"
+#include "solver/CudaTDMASolver.hpp"
 #endif
 #include <stdexcept>
 #include <algorithm>
 #include <cctype>
 
-namespace physi_sim::solver {
+namespace physi_sim::solver 
+{
 
-namespace {
+namespace 
+{
 std::string solver_to_lower(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(),
                    [](unsigned char c){ return std::tolower(c); });
@@ -19,8 +22,10 @@ std::string solver_to_lower(std::string s) {
 }
 } // namespace
 
-std::unique_ptr<ISolver> SolverFactory::create(SolverType type, HardwareBackend backend) {
-    switch (type) {
+std::unique_ptr<ISolver> SolverFactory::create(SolverType type, HardwareBackend backend) 
+{
+    switch (type) 
+    {
     case SolverType::JACOBI:
         if (backend == HardwareBackend::CPU) return std::make_unique<JacobiCPU>();
 #ifdef PHYSI_SIM_CUDA_ENABLED     
@@ -29,20 +34,24 @@ std::unique_ptr<ISolver> SolverFactory::create(SolverType type, HardwareBackend 
         break;
     case SolverType::TDMA:
         if (backend == HardwareBackend::CPU) return std::make_unique<TDMACPU>();
-        throw std::invalid_argument("TDMAGPU: Phase 3b");
-//        break;
+#ifdef PHYSI_SIM_CUDA_ENABLED
+        if (backend == HardwareBackend::CUDA) return std::make_unique<CudaTDMASolver>();
+#endif
+        break;
     }
     throw std::invalid_argument("Unknown SolverType/Backend");
 }
 
-SolverType SolverFactory::parseSolverType(const std::string& s) {
+SolverType SolverFactory::parseSolverType(const std::string& s) 
+{
     auto low = solver_to_lower(s);
     if (low == "jacobi") return SolverType::JACOBI;
     if (low == "tdma")   return SolverType::TDMA;
     throw std::invalid_argument("Unknown solver: '" + s + "'");
 }
 
-HardwareBackend SolverFactory::parseBackend(const std::string& s) {
+HardwareBackend SolverFactory::parseBackend(const std::string& s) 
+{
     auto low = solver_to_lower(s);
     if (low == "cpu")  return HardwareBackend::CPU;
     if (low == "cuda") return HardwareBackend::CUDA;

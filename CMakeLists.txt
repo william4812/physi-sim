@@ -80,7 +80,7 @@ add_executable(physi_tests
     tests/unit/test_comparison_variants.cpp
     tests/unit/test_residual_history_csv.cpp
     tests/unit/test_residual_and_convergence.cpp
-
+    
     # integration
     tests/integration/test_fortran_interop.cpp
     tests/integration/test_profiling_harness.cpp
@@ -93,6 +93,7 @@ add_executable(physi_tests
 if(PHYSI_SIM_CUDA_ENABLED)
     target_sources(physi_tests PRIVATE
         tests/unit/test_cuda_jacobi_solver.cpp
+        tests/unit/test_cuda_tdma_solver.cpp
     )
     target_compile_definitions(physi_tests PRIVATE PHYSI_SIM_CUDA_ENABLED)
 endif()
