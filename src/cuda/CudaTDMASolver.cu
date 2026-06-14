@@ -213,6 +213,11 @@ void CudaTDMASolver::upload(const core::Grid2D& grid)
     const size_t bytes = static_cast<size_t>(nx) * ny * sizeof(double);
     cudaCheck(cudaMemcpy(d_curr, grid.data(), bytes, cudaMemcpyHostToDevice),
               "H2D d_curr");
+    // Seed d_next's boundaries once — they never change and the sweep never
+    // writes the top/bottom rows, so both buffers stay boundary-correct for the
+    // whole solve and solve_vram needs no per-iteration D2D copy.
+    cudaCheck(cudaMemcpy(d_next, grid.data(), bytes, cudaMemcpyHostToDevice),
+              "H2D d_next seed");
     m_vram_resident = true;
 }
 
@@ -223,7 +228,6 @@ void CudaTDMASolver::solve_vram(int max_iter, double tolerance)
     m_vram_iterations = 0;
 
     const std::size_t n     = static_cast<std::size_t>(m_nx) * m_ny;
-    const std::size_t bytes = n * sizeof(double);
     const int threads = 256;
     const int blocks  = (m_ny + threads - 1) / threads;
 
@@ -231,10 +235,6 @@ void CudaTDMASolver::solve_vram(int max_iter, double tolerance)
 
     for (int it = 0; it < max_iter; ++it)
     {
-        // Carry the unchanged boundaries + top/bottom rows into d_next; the
-        // kernel overwrites only the interior rows.
-        cudaCheck(cudaMemcpy(d_next, d_curr, bytes, cudaMemcpyDeviceToDevice),
-                  "D2D carry");
 
         tdma_sweep_kernel<<<blocks, threads>>>(d_curr, d_next,
                                                d_a, d_b, d_c, d_d, d_x,
@@ -288,6 +288,7 @@ void CudaTDMASolver::step(core::Grid2D& grid)
     // RUNG 4: set m_residual + push to m_history for this step.
     const std::size_t n = static_cast<std::size_t>(m_nx) * m_ny;
     m_residual = reduce_max_abs_diff(d_curr, d_next, n);   // d_curr=NEW, d_next=OLD after the swap
+    m_history.push_back(m_residual);  
     
     download(grid);
 }
