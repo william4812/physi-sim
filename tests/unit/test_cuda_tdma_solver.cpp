@@ -3,16 +3,14 @@
 // TDD spec for CudaTDMASolver. The CPU TDMA result is GROUND TRUTH; the GPU
 // solver must reproduce it. With the stub kernel this FAILS — that is Rung 0.
 //
-// TODO(you): wire the marked lines to your real Grid2D / TDMACPU API.
-//            Mirror tests/unit/test_comparison_variants.cpp — it already does
-//            cross-variant parity, so copy its problem setup and run loop.
 
 #include <gtest/gtest.h>
 #include "solver/ISolver.hpp"
 #include "solver/CudaTDMASolver.hpp"
-#include "solver/TDMACPU.hpp"        // TODO(you): your CPU TDMA header/class name
+#include "solver/TDMACPU.hpp"        
 #include "core/Grid2D.hpp"
 #include <cuda_runtime.h>
+#include <limits>
 
 using namespace physi_sim;
 
@@ -37,14 +35,15 @@ void runToConvergence(solver::ISolver& s, core::Grid2D& g,
 {
     for (int k = 0; k < max_iter; ++k) {
         s.step(g);
-        if (s.residual() < tol) break;   // TODO(you): match your stop criterion
+        if (s.residual() < tol) break;   
     }
 }
 
 } // namespace
 
 // ── RUNG 2 target: full-grid parity with the CPU reference ──────────────────
-TEST(CudaTDMASolverTest, FieldMatchesCPUTDMA) {
+TEST(CudaTDMASolverTest, FieldMatchesCPUTDMA) 
+{
     if (!hasCudaDevice()) GTEST_SKIP() << "no CUDA device";
 
     const int    n          = 32;
@@ -66,7 +65,7 @@ TEST(CudaTDMASolverTest, FieldMatchesCPUTDMA) {
 
     for (int j = 1; j < n - 1; ++j)
         for (int i = 1; i < n - 1; ++i)
-            EXPECT_NEAR(gpu.at(i, j), ref.at(i, j), parity_tol)   // TODO(you): your accessor
+            EXPECT_NEAR(gpu.at(i, j), ref.at(i, j), parity_tol) 
                 << "mismatch at (" << i << "," << j << ")";
 }
 
@@ -100,6 +99,8 @@ TEST(CudaTDMASolverTest, SolvesSingleKnownSystem)
                               
 TEST(CudaTDMASolverTest, ResidualIsPositiveAfterOneStep)         
 {
+    if (!hasCudaDevice()) GTEST_SKIP() << "no CUDA device";
+
     core::Grid2D grid = makeProblem(32);     // hot top edge → one sweep moves the interior
     physi_sim::solver::CudaTDMASolver solver;
     solver.step(grid);       
@@ -107,4 +108,65 @@ TEST(CudaTDMASolverTest, ResidualIsPositiveAfterOneStep)
     // After one step, interior cells have been updated.
     // Residual = max|T_new - T_old| must be > 0.
     EXPECT_GT(solver.residual(), 0.0);
-} 
+}
+
+TEST(CudaTDMASolverTest, ResidualDecreasesMonotonically)
+{
+    if (!hasCudaDevice()) GTEST_SKIP() << "no CUDA device";
+
+    core::Grid2D grid = makeProblem(32);     // hot top edge → one sweep moves the interior
+    // TDMA on a consistent boundary-value problem must converge.
+    // Residual must be non-increasing (within floating-point noise).
+    physi_sim::solver::CudaTDMASolver solver;
+
+    double prev = std::numeric_limits<double>::max();
+    for (int i = 0; i < 100; ++i) 
+    {
+        solver.step(grid);
+        double curr = solver.residual();
+        EXPECT_LE(curr, prev * 1.01)  // 1% tolerance for floating-po
+            << "Residual increased at iteration " << i
+            << ": prev=" << prev << " curr=" << curr;
+        prev = curr;
+    }
+}
+
+TEST(CudaTDMASolverTest, ConvergesToTolerance)
+{
+    if (!hasCudaDevice()) GTEST_SKIP() << "no CUDA device";
+
+    const double tolerance = 1e-5;
+    const int    max_iters = 20000;
+
+    core::Grid2D grid = makeProblem(32);
+    solver::CudaTDMASolver solver;
+
+    int iter = 0;
+    for (; iter < max_iters; ++iter) {
+        solver.step(grid);
+        if (solver.residual() < tolerance) break;
+    }
+
+    EXPECT_LT(solver.residual(), tolerance)
+        << "GPU TDMA did not converge in " << max_iters << " iterations";
+    EXPECT_LT(iter, max_iters) << "hit the iteration cap without converging";
+}
+
+// RED now — drives the solve_vram early-stop (the loop edit we lined up).
+TEST(CudaTDMASolverTest, SolveVramStopsBeforeMaxIter)
+{
+    if (!hasCudaDevice()) GTEST_SKIP() << "no CUDA device";
+
+    const double tolerance = 1e-5;
+    const int    max_iters = 20000;
+
+    core::Grid2D grid = makeProblem(32);
+    solver::CudaTDMASolver solver;
+    solver.upload(grid);
+    solver.solve_vram(max_iters, tolerance);
+    solver.download(grid);
+
+    EXPECT_LT(solver.get_vram_iterations(), max_iters)
+        << "solve_vram ran all " << max_iters
+        << " iterations — it is ignoring tolerance (no early-stop)";
+}

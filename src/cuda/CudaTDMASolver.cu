@@ -222,9 +222,12 @@ void CudaTDMASolver::solve_vram(int max_iter, double tolerance)
     m_history.clear();
     m_vram_iterations = 0;
 
-    const size_t bytes = static_cast<size_t>(m_nx) * m_ny * sizeof(double);
+    const std::size_t n     = static_cast<std::size_t>(m_nx) * m_ny;
+    const std::size_t bytes = n * sizeof(double);
     const int threads = 256;
     const int blocks  = (m_ny + threads - 1) / threads;
+
+    constexpr int RESIDUAL_STRIDE = 50;   // mirror CudaJacobiSolver's cadence
 
     for (int it = 0; it < max_iter; ++it)
     {
@@ -232,6 +235,7 @@ void CudaTDMASolver::solve_vram(int max_iter, double tolerance)
         // kernel overwrites only the interior rows.
         cudaCheck(cudaMemcpy(d_next, d_curr, bytes, cudaMemcpyDeviceToDevice),
                   "D2D carry");
+
         tdma_sweep_kernel<<<blocks, threads>>>(d_curr, d_next,
                                                d_a, d_b, d_c, d_d, d_x,
                                                m_nx, m_ny);
@@ -242,7 +246,15 @@ void CudaTDMASolver::solve_vram(int max_iter, double tolerance)
 
         // RUNG 4: every RESIDUAL_STRIDE iters, reduce max|d_curr - d_next|,
         // push to m_history, and break when below tolerance.
-        (void)tolerance;
+        // After the swap d_curr=NEW, d_next=OLD (same as step()). transform_reduce
+        // syncs the device, so only check every RESIDUAL_STRIDE sweeps — plus once
+        // on the final iteration so m_residual / m_history are always meaningful.
+        if (m_vram_iterations % RESIDUAL_STRIDE == 0 || it == max_iter - 1)
+        {
+            m_residual = reduce_max_abs_diff(d_curr, d_next, n);
+            m_history.push_back(m_residual);
+            if (m_residual < tolerance) break;
+        }
     }
     cudaCheck(cudaDeviceSynchronize(), "solve_vram sync");
 }
@@ -279,6 +291,7 @@ void CudaTDMASolver::step(core::Grid2D& grid)
     
     download(grid);
 }
+
 
 double CudaTDMASolver::residual() const { return m_residual; }
 
