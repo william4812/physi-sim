@@ -25,6 +25,8 @@ struct SimulationParams {
     bool             run_gpu    = true;         // include JacobiGPU in sweep
     std::string      output_dir = ".";          // CSV output directory
     int              compare_grid = 0;          // controlled-comparison grid (0 = use default 100)
+    double           compare_tol = 5e-4;   // absolute L-inf for the comparison ladder
+    int              compare_cap = 20000;  // comparison iteration ceiling
 };
 
 } // namespace physi_sim::core

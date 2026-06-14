@@ -58,10 +58,17 @@ TEST(ConfigTest, LoadsBenchmarkSection)
         "thermal": { "initial_temp": 25.5 },
         "solver":  { "max_iter": 1000, "type": "Jacobi" },
         "benchmark": {
-            "grid_sizes": [50, 100, 200, 500],
-            "tolerance":  1e-4,
             "run_gpu":    true,
-            "output_dir": "/tmp"
+            "output_dir": "/tmp",
+            "grid_sweep": {
+                "grid_sizes": [50, 100, 200, 500],
+                "tolerance":  1e-4
+            },
+            "comparison": {
+                "grid":      500,
+                "tolerance": 5e-4,
+                "max_iter":  20000
+            }
         }
     })";
     out.close();
@@ -72,7 +79,10 @@ TEST(ConfigTest, LoadsBenchmarkSection)
     EXPECT_DOUBLE_EQ(params.initial_temp,   25.5);
     EXPECT_EQ(params.max_iterations,        1000);
     EXPECT_EQ(params.solver_type,           "Jacobi");
-
+    EXPECT_EQ(params.compare_grid, 500);
+    EXPECT_DOUBLE_EQ(params.compare_tol, 5e-4);
+    EXPECT_EQ(params.compare_cap, 20000);
+    
     // new benchmark fields
     ASSERT_EQ(params.grid_sizes.size(), 4u);
     EXPECT_EQ(params.grid_sizes[0],  50);
