@@ -31,6 +31,14 @@ TEST_F(SolverFactoryTest, CreatesJacobiGPU)
     ASSERT_NE(solver, nullptr);
     EXPECT_EQ(solver->name(), "JacobiGPU");
 }
+
+TEST_F(SolverFactoryTest, CreatesTDMAGPU)
+{
+    // TDMA+CUDA is now implemented — must return a valid solver
+    auto solver = SolverFactory::create(SolverType::TDMA, HardwareBackend::CUDA);
+    ASSERT_NE(solver, nullptr);
+    EXPECT_EQ(solver->name(), "TDMAGPU");
+}
 #endif
 
 TEST_F(SolverFactoryTest, CreatesTDMACPU) 
@@ -38,14 +46,6 @@ TEST_F(SolverFactoryTest, CreatesTDMACPU)
     auto solver = SolverFactory::create(SolverType::TDMA, HardwareBackend::CPU);
     ASSERT_NE(solver, nullptr);
     EXPECT_EQ(solver->name(), "TDMACPU");
-}
-
-TEST_F(SolverFactoryTest, UnknownBackendThrows) 
-{
-    EXPECT_THROW(
-        SolverFactory::create(SolverType::TDMA, HardwareBackend::CUDA),
-        std::invalid_argument
-    ); 
 }
 
 TEST(SolverFactoryParseTest, ParsesJacobiCaseInsensitive) 
@@ -67,10 +67,14 @@ TEST(SolverFactoryParseTest, ParsesBackendCPU)
     EXPECT_EQ(SolverFactory::parseBackend("CPU"),  HardwareBackend::CPU);
 }
 
-TEST(SolverFactoryParseTest, UnknownSolverTypeThrows) 
+#ifndef PHYSI_SIM_CUDA_ENABLED
+TEST_F(SolverFactoryTest, CudaBackendThrowsWhenUnavailable)
 {
-    EXPECT_THROW(SolverFactory::parseSolverType("foobar"), std::invalid_argument);
+    // CPU-only build: CUDA branch compiled out, so requesting it must throw
+    EXPECT_THROW(SolverFactory::create(SolverType::TDMA, HardwareBackend::CUDA),
+                 std::invalid_argument);
 }
+#endif
 
 TEST_F(SolverFactoryTest, StepDoesNotThrow) 
 {

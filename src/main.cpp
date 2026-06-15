@@ -8,6 +8,7 @@
 #include "core/Grid2D.hpp"
 #ifdef PHYSI_SIM_CUDA_ENABLED
 #include "solver/CudaJacobiSolver.hpp"
+#include "solver/CudaTDMASolver.hpp"
 #endif
 #include "solver/JacobiCPU.hpp"
 #include "solver/TDMACPU.hpp"       // direct use in comparison runners
@@ -447,6 +448,37 @@ RunResult runJacobiGPUVram(const CompareConfig& cfg)    // VRAM-resident
                       .iterations=s.get_vram_iterations(), .wall_ms=ms, .vtk_path=path };
 }
 
+RunResult runTDMAGPUNoVram(const CompareConfig& cfg)   // step-based: PCIe every iteration
+{
+    using namespace physi_sim;
+    auto g = fresh_grid(cfg); double ms; solver::CudaTDMASolver s;
+    int it = solve_to_tol(s, g, cfg, ms);              // step() = H2D + sweep + D2H per iter
+    const std::string path = "cmp_gpu_tdma_novram_" + std::to_string(cfg.N) + ".vtk";
+
+    io::VTKWriter().write_2d(g.data(), cfg.N, cfg.N, path);
+    return RunResult{ .variant="TDMAGPU_NoVram", .backend="cuda", .residency="per_iter",
+                      .iterations=it, .wall_ms=ms, .vtk_path=path };
+}
+
+RunResult runTDMAGPUVram(const CompareConfig& cfg)      // VRAM-resident
+{
+    using namespace physi_sim;
+    auto g = fresh_grid(cfg);
+    double ms;
+    solver::CudaTDMASolver s;
+    const auto t0 = std::chrono::high_resolution_clock::now();
+    s.upload(g);
+    s.solve_vram(cfg.cap, cfg.tol);
+    s.download(g);
+    ms = std::chrono::duration<double, std::milli>(
+             std::chrono::high_resolution_clock::now() - t0).count();
+    const std::string path = "cmp_gpu_tdma_vram_" + std::to_string(cfg.N) + ".vtk";
+
+    io::VTKWriter().write_2d(g.data(), cfg.N, cfg.N, path);
+    return RunResult{ .variant="TDMAGPU_Vram", .backend="cuda", .residency="resident",
+                      .iterations=s.get_vram_iterations(), .wall_ms=ms, .vtk_path=path };
+}
+
 // ── Orchestrator — call some or all; comment a line out to skip a variant ─────
 void run_comparison_exports(const physi_sim::core::SimulationParams& params)
 {
@@ -455,17 +487,20 @@ void run_comparison_exports(const physi_sim::core::SimulationParams& params)
     // enabled but no device is present, the first cudaMalloc inside
     // CudaJacobiSolver throws std::runtime_error, which main()'s try/catch
     // already handles (same as run_solver_benchmark above).
-    CompareConfig cfg;     // one grid / tol / BC for ALL variants
+    CompareConfig cfg;
 
-    if (params.compare_grid > 0)             // honor JSON only if present/valid
-        cfg.N = params.compare_grid;
-
-    const std::vector<RunResult> results = {
+    if (params.compare_grid > 0) cfg.N   = params.compare_grid;
+    if (params.compare_tol  > 0) cfg.tol = params.compare_tol;   // ← was hardcoded 5e-4
+    if (params.compare_cap  > 0) cfg.cap = params.compare_cap;   // ← was hardcoded 20000
+    
+    const std::vector<RunResult> results = 
+    {
         runJacobiCPU(cfg),       // Fig 1 + Fig 2 CPU side
         runTDMACPU(cfg),         // Fig 1
         runJacobiGPUNoVram(cfg), // Fig 2 + Fig 3 (no-VRAM, PCIe per iter)
         runJacobiGPUVram(cfg),   // Fig 3 (VRAM-resident)
-        // runTDMAGPUVram(cfg),  // ← future (Phase 5): add the runner, uncomment here
+        runTDMAGPUNoVram(cfg),   // PCIe-per-step (the residency "before")
+        runTDMAGPUVram(cfg),     // Fig 4: TDMA-GPU-VRAM vs Jacobi-GPU-VRAM
     };
 
     // Single timing table — its only job is to serialize the results.
