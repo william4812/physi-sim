@@ -46,17 +46,35 @@ def plot_scaling(df, out, title):
     print(df.pivot_table(index="grid_nx", columns="solver",
                          values="wall_time_ms").to_string(float_format=lambda v: f"{v:.1f}"))
 
+def variant_color(v):
+    # Hue = algorithm, shade = residency — read from the name so the plotter
+    # stays data-driven (no hardcoded variant list). "novram" is checked
+    # before "vram" since it contains it as a substring.
+    name = v.lower()
+    cmap = (plt.cm.Blues if "jacobi" in name
+            else plt.cm.Oranges if "tdma" in name
+            else plt.cm.Greys)
+    shade = 0.65 if "novram" in name else 0.85 if "vram" in name else 0.48
+    return cmap(shade)
+
+def variant_sort_key(v):
+    name = v.lower()
+    algo  = 0 if "jacobi" in name else 1                          # Jacobi block, then TDMA
+    resid = 1 if "novram" in name else 2 if "vram" in name else 0  # CPU < NoVram < Vram
+    return (algo, resid)
 
 def plot_comparison(df, out, title):
     grids = sorted(df["grid_n"].unique())
-    variants = list(dict.fromkeys(df["variant"]))   # preserve first-seen order
+    variants = sorted(dict.fromkeys(df["variant"]), key=variant_sort_key)
+    #variants = list(dict.fromkeys(df["variant"]))   # preserve first-seen order
     x = np.arange(len(grids))
     w = 0.8 / max(len(variants), 1)
     fig, ax = plt.subplots(figsize=(9.5, 5.5))
+
     for i, v in enumerate(variants):
         vals = [df[(df["variant"] == v) & (df["grid_n"] == g)]["wall_time_ms"].mean()
                 for g in grids]
-        bars = ax.bar(x + i * w - 0.4 + w / 2, vals, w, label=v)
+        bars = ax.bar(x + i * w - 0.4 + w / 2, vals, w, label=v, color=variant_color(v)) 
         for b, val in zip(bars, vals):
             if val == val:  # skip NaN
                 ax.text(b.get_x() + b.get_width() / 2, val, f"{val:.0f}",
