@@ -384,14 +384,21 @@ without recompiling.
 | 3 | `feat/benchmark-driver` | CMakePresets, JSON config, FSM driver, figures | ✅ |
 | 4 | `feat/phase2-vram-resident` | VRAM-resident buffers — GPU beats CPU (§6) | ✅ |
 | 5a | `feat/cuda-tdma` | CudaTDMASolver — batched per-line Thomas (line-Jacobi), profiled vs CPU | ✅ |
-| 5b | `feat/cuda-tdma` | Parallel cyclic reduction (PCR) — intra-line parallelism, O(log N) depth | 🔲 |
-| 6 | `feat/shared-memory-tiling` | Jacobi shared-memory halo exchange | 🔲 |
-| 7 | `feat/3d-physics` | 3D ADI conduction, Navier–Stokes FVM, P1 radiation | 🔲 |
-| 8 | `feat/multiscale-bridge` | MesoBoltzmannSolver, Kn-based ScaleManager | 🔲 |
+| 5b | `feat/cuda-pcr` | Parallel cyclic reduction — replace the O(N)-depth Thomas recurrence with O(log N) depth, the structural fix for the GPU-TDMA loss (§6) | 🔲 |
+| 6 | `feat/kernel-profiling` | Profile the Jacobi kernel (Nsight Compute, roofline) → optimize memory access via coalescing + shared-memory tiling, with measured before/after bandwidth | 🔲 |
+| 7 | `feat/numerical-validation` | Manufactured solutions + grid-convergence order-of-accuracy — prove the discretization is correct, not merely self-consistent | 🔲 |
+| 8 | `feat/multi-gpu` | Multi-GPU domain decomposition + halo exchange, communication/compute overlap, weak/strong scaling | 🔲 |
+| 9 | `feat/3d-physics` | 3D ADI conduction, Navier–Stokes FVM, P1 radiation | 🔲 |
+| 10 | `feat/multiscale-bridge` | MesoBoltzmannSolver, Kn-based ScaleManager | 🔲 |
+
+The near-term phases (5b–8) are scoped as open
+[issues](https://github.com/william4812/physi-sim/issues) — each with motivation,
+a task checklist, and acceptance criteria — so the roadmap and the tracker tell
+the same story.
 
 ### The long game: a modular Conjugate Heat Transfer framework
 
-Phases 7–8 grow physi-sim from a single-equation thermal solver into a modular
+Phases 9–10 grow physi-sim from a single-equation thermal solver into a modular
 **Conjugate Heat Transfer (CHT)** framework — conduction, convection and
 radiation solved together and coupled at fluid–solid interfaces, all behind the
 same `ISolver` contract.
