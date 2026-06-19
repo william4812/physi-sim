@@ -32,7 +32,7 @@ TEST(SolutionValidation, ConvergedFieldSatisfiesDiscreteLaplace) {
     std::vector<double> history;
 
     // ACT: run to convergence; read the final field into `T` (size nx*ny).
-solver.solve_laplace_jacobi(grid, /*tol=*/1e-6, /*max_it=*/10000, &history);
+    solver.solve_laplace_jacobi(grid, /*tol=*/1e-6, /*max_it=*/10000, &history);
 
     // the solve mutates `grid` in place, so the solved field is now in it
     std::vector<double> T = grid.get_raw_vector();
