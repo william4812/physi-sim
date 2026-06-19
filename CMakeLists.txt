@@ -88,6 +88,7 @@ add_executable(physi_tests
     
     # regression
     tests/regression/test_convergence_baselines.cpp
+    tests/regression/test_solution_validation.cpp
 )
 
 if(PHYSI_SIM_CUDA_ENABLED)
