@@ -47,6 +47,7 @@ include_directories(include)
 add_subdirectory(src/thermal)
 add_subdirectory(src/io)
 add_subdirectory(src/core)
+add_subdirectory(src/thermal3d)
 add_subdirectory(src/solver)
 
 # 3. Main Executable
@@ -89,6 +90,9 @@ add_executable(physi_tests
     # regression
     tests/regression/test_convergence_baselines.cpp
     tests/regression/test_solution_validation.cpp
+
+    # verification
+    tests/verification/test_mms_conduction3d.cpp
 )
 
 if(PHYSI_SIM_CUDA_ENABLED)
@@ -105,6 +109,7 @@ target_link_libraries(physi_tests PRIVATE
     solver_component
     core_logic
     thermal_backend
+    thermal3d 
     io_component
     $<$<BOOL:${PHYSI_SIM_CUDA_ENABLED}>:cuda_solver>
     $<$<BOOL:${PHYSI_SIM_CUDA_ENABLED}>:CUDA::cudart>
