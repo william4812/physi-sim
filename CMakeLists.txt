@@ -93,6 +93,8 @@ add_executable(physi_tests
 
     # verification
     tests/verification/test_mms_conduction3d.cpp
+    tests/verification/test_electro_thermal_physics.cpp
+    tests/verification/test_thermal_conduction_physics.cpp
 )
 
 if(PHYSI_SIM_CUDA_ENABLED)
