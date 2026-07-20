@@ -5,6 +5,7 @@
 # model (Phase 3), and the multiscale bridge + ScaleManager (Phase 4).
 add_library(thermal3d STATIC
     Conduction3D.cpp
+    ElectroThermal3D.cpp
     # conduction_kernel.f90    <-- when a Fortran kernel lands here, add it AND
     #                              set LINKER_LANGUAGE CXX below (see 4th Principle)
 )
