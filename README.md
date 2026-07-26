@@ -431,3 +431,17 @@ Boltzmann/DSMC solver — must produce the same temperature profile. A single
 Google Test, `MultiScaleValidationTest.VerifyMacroMesoConsistency`, asserts
 profile agreement to 0.01%, giving a mathematical bridge of confidence before
 each new physics regime is trusted.
+
+<details>
+<summary><strong>Internal Development Log & Active Context</strong></summary>
+
+### Current Sprint: Phase 2 - ElectroThermal3D Implementation
+*   **Status:** Infrastructure verified (102/102 tests passed).
+*   **Next Immediate Goal:** Implement `ElectroThermal3D` class structure.
+*   **Verification Pin:** `TSV Joule Integral Test` ($\int \sigma |\nabla V|^2 dV = I^2 R$).
+
+### AI Collaboration State
+- **Architecture:** 7-point stencil; harmonic mean applied at material interfaces.
+- **Constraints:** Surgical changes only; maintain existing ISolver contract.
+- **Reference:** See `CLAUDE.md` for coding style and daily benchmark workflow.
+</details>
