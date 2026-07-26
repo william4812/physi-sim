@@ -49,6 +49,7 @@ add_subdirectory(src/io)
 add_subdirectory(src/core)
 add_subdirectory(src/thermal3d)
 add_subdirectory(src/solver)
+add_subdirectory(src/apps)
 
 # 3. Main Executable
 add_executable(physi_sim src/main.cpp)
@@ -81,6 +82,7 @@ add_executable(physi_tests
     tests/unit/test_comparison_variants.cpp
     tests/unit/test_residual_history_csv.cpp
     tests/unit/test_residual_and_convergence.cpp
+    tests/unit/test_field_export_vti.cpp    
     
     # integration
     tests/integration/test_fortran_interop.cpp
