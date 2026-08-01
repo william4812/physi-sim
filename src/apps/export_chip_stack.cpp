@@ -96,18 +96,9 @@ int main(int argc, char* argv[]) {
     w.write_3d(qField, "q_v_w_m3",   n[0], n[1], n[2], h[0], h[1], h[2], "chip_power.vti");
     std::printf("wrote    : chip_layout.vti, chip_k.vti, chip_power.vti\n");
 
-    // ---- solve, if the current solver can represent this domain -------------
-    const bool cubic = (n[0] == n[1] && n[1] == n[2]) &&
-                       (layout.size[0] == layout.size[1] && layout.size[1] == layout.size[2]);
-    if (!cubic) {
-        std::printf("\nsolve    : SKIPPED -- ElectroThermal3D is cubic-only (single n, single L).\n"
-                    "           This domain is %.1f:1. Run the anisotropic reference:\n"
-                    "             python3 python/scripts/solve_layout_reference.py %s\n",
-                    layout.size[0]/layout.size[2], path.c_str());
-        return 0;
-    }
-
-    ElectroThermal3D solver(n[0], layout.size[0], [](double,double,double){ return 1.0; });
+    // ---- solve (anisotropic: any aspect ratio) ----------------------------
+    ElectroThermal3D solver(n[0], n[1], n[2], layout.size[0], layout.size[1], layout.size[2],
+                            [](double,double,double){ return 1.0; });
     ElectroThermal3D::BCs bcs;
     for (auto& f : bcs) { f.type = ElectroThermal3D::FaceBC::Neumann;
                           f.value = [](double,double,double){ return 0.0; }; }
