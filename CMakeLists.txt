@@ -97,6 +97,7 @@ add_executable(physi_tests
     tests/verification/test_mms_conduction3d.cpp
     tests/verification/test_electro_thermal_physics.cpp
     tests/verification/test_thermal_conduction_physics.cpp
+    tests/verification/test_anisotropic_domain.cpp
 )
 
 if(PHYSI_SIM_CUDA_ENABLED)

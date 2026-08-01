@@ -5,6 +5,7 @@ add_library(io_component STATIC
     VTKWriter.cpp
     CSVWriter.cpp
     ConfigLoader.cpp
+    ChipLayout.cpp
 )
 
 # Use the standardized variable for clarity

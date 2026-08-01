@@ -23,10 +23,11 @@ not — see §6.
 1. [Architecture](#1-architecture)
 2. [Solver lifecycle — Finite State Machine](#2-solver-lifecycle--finite-state-machine)
 3. [Physics verification](#3-physics-verification)
+3.5. [3D package thermal — layout to temperature field](#35-3d-package-thermal--layout-to-temperature-field)
 4. [Algorithm comparison — Jacobi vs TDMA](#4-algorithm-comparison--jacobi-vs-tdma)
 5. [GPU profiling — the PCIe wall](#5-gpu-profiling--the-pcie-wall)
 6. [VRAM residency, parallelism, and the limits of acceleration](#6-vram-residency-parallelism-and-the-limits-of-acceleration)
-7. [Test suite — 97 passing](#7-test-suite--97-passing)
+7. [Test suite — 115 passing](#7-test-suite--115-passing)
 8. [Build and reproduce results](#8-build-and-reproduce-results)
 9. [Roadmap and physics vision](#9-roadmap-and-physics-vision)
 
@@ -156,7 +157,116 @@ from the CPU Jacobi reference fails the build. The GPU TDMA solver added in
 Phase 5 reaches the same field, locked by `CudaTDMASolverTest.FieldMatchesCPUTDMA`.
 
 ---
+## 3.5. 3D package thermal — layout to temperature field
 
+The 2D solver stack above answers "how fast." This layer answers "how hot": a
+declarative 2.5D package geometry (a GPU die flanked by HBM stacks, bonded
+through a TIM to a coldplate) solved as a steady 3D conduction field. It lives in
+two zero-tangle components — `thermal3d` (physics, **zero dependencies**) and
+`io` (JSON parsing + VTK) — composed by an app that links both. `thermal3d`
+touches nothing else, so its physics is verifiable in complete isolation.
+
+### The one equation
+
+Everything here solves steady heat conduction:
+
+```
+div( k grad T ) + q_v = 0
+```
+
+Conservation of energy on a control volume — *in − out + generated = 0* at steady
+state — integrated over a cell and reduced by the divergence theorem to a balance
+of fluxes across its six faces. `k grad T` is Fourier's law. The electrical
+problem is the same operator (`div(sigma grad V) = 0`, charge conservation +
+Ohm), so one `solveField` routine serves both; the coefficient is `k` for heat,
+`sigma` for charge.
+
+### The pipeline
+
+```
+chip_layout.json ──▶ sample at cell centres ──▶ assemble 7-point stencil
+                          (ChipLayout)              (ElectroThermal3D)
+                                                          │
+   ParaView ◀── .vti (CellData) ◀── SOR solve ◀──────────┘
+              (VTKWriter)          div(k grad T)+q_v=0
+```
+
+Each stage makes one non-obvious choice, each for a first-principles reason:
+
+**Input — `include/io/ChipLayout.{hpp,cpp}`.** Geometry is declarative: a domain,
+named materials, and axis-aligned regions. Three deliberate choices — material
+properties are an **open key/value map** (adding `mfp_nm` for future phonon models
+needs zero C++ change); regions apply **last-wins** (a full-width mold layer, then
+the die carved out of it — order is semantic); power lives on the **region, not
+the material** (the same silicon is a die here, a stiffener there). Authoring
+units (µm, W/cm², °C) convert to SI once in the loader, which validates every
+cell centre at parse time so a hole or unknown material throws immediately,
+naming the coordinate — never a silent wrong answer.
+
+**Sample — `src/apps/export_chip_stack.cpp`.** The layout is read at cell
+*centres*, because the finite-volume unknown is the cell average and the scheme
+assumes one material per cell with jumps only at faces. That piecewise-constant
+model is what makes the interface conductivity below *exact*.
+
+**Assemble — `src/thermal3d/ElectroThermal3D.cpp`.** For each cell,
+`diag·T_P = Σ G_face·T_neighbour + q_v·V_cell`, every term a power in watts. The
+interior face conductance is the **harmonic mean** `2·k_P·k_N/(k_P+k_N)` —
+derived, not chosen: heat crosses two half-cells in series, resistances add, so
+conductivities combine harmonically. At a Si|TIM interface (k=150 vs 5) this is
+*exact*; an arithmetic mean would conduct 8× too well and erase the TIM
+bottleneck. Boundaries are three faces of one idea — Dirichlet (half-cell
+conductance, the factor-of-2 that is a perfect contact), Neumann (fixed flux, RHS
+only), Robin (half-cell in series with a film, containing the other two as
+h→∞ and h→0 limits). The grid is **anisotropic** (`nx,ny,nz` over `Lx,Ly,Lz`):
+a package is ~6 mm wide by ~0.5 mm tall, so the axes cannot share a spacing. The
+cubic constructor `(n,L)` forwards to `(n,n,n,L,L,L)`, so every cubic
+verification test is a special case of the general path.
+
+**Solve.** The system is symmetric positive definite (off-diagonals are positive
+conductances; Dirichlet/Robin faces make it diagonally dominant), solved by SOR
+with `omega = 2/(1+sin(pi/n))`. `solveField` is coefficient-agnostic — heat or
+charge is just which field you pass.
+
+**Postprocess — `src/io/VTKWriter.cpp`, `python/scripts/`.** Export is
+**CellData**, not PointData: the unknown is a cell average, and interpolating to
+points would blur the interface gradients the harmonic mean exists to preserve.
+The writer reorders indices (solver stores z fastest, VTK wants x fastest); a
+transposed writer renders wrongly but plausibly, so `test_field_export_vti.cpp`
+pins the order. `solve_layout_reference.py` is an independent Python FV solve of
+the same JSON — a **cross-implementation check** complementary to MMS.
+
+### Verification and result
+
+Pinned by a bottom-up analytical ladder (`test_thermal_conduction_physics.cpp`),
+each level adding one term with a closed-form reference:
+
+```
+L0 uniform Dirichlet   exact         L4 uniform source   exact vs discrete
+L1 linear profile      exact         L5 3D source        2nd-order convergent
+L2 Si|TIM interface    exact         L6 energy balance   exact
+L3 Dirichlet|Robin     exact
+```
+
+The anisotropic path adds non-cubic linear-exactness and direction-independence
+tests. On a GB300-like layout (representative, non-proprietary: square GPU,
+HBM on four sides), the C++ solver and the independent Python reference agree to
+the digit — **GPU 119.4 °C** (over its 105 °C limit at 400 W/cm²), **HBM 81.2 °C**,
+with most of HBM's rise coming from GPU lateral crosstalk. That coupling is only
+resolved at the true ~12:1 aspect ratio, which is why the anisotropic domain
+matters.
+
+### Run
+
+```bash
+cmake --build --preset hpc-release -j$(nproc)
+ctest  --preset hpc-release                                  # full verification suite
+
+./build/bin/export_chip_stack                                # layout → material/k/power .vti
+python3 python/scripts/solve_layout_reference.py chip_layout.json --crosstalk
+python3 python/scripts/write_temperature_vti.py chip_layout.json chip_temperature.vti
+paraview chip_temperature.vti                                # colour by temperature_C
+```
+---
 ## 4. Algorithm comparison — Jacobi vs TDMA
 
 **Question:** under a common stopping criterion, how much faster does the
@@ -278,7 +388,7 @@ reduction — O(log N) depth at the cost of more total work — tracked as roadm
 
 ---
 
-## 7. Test suite — 97 passing
+## 7. Test suite — 115 passing
 
 97 tests across three independent layers; the full suite runs in ~11 s.
 

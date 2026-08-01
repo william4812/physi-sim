@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "domain": { "size_um": [6000.0, 6000.0, 500.0], "cells": [60, 60, 20] },
+  "materials": {
+    "silicon":    { "k_w_mk": 150.0, "t_limit_c": 105.0 },
+    "hbm_stack":  { "k_w_mk":  20.0, "t_limit_c":  85.0 },
+    "mold":       { "k_w_mk":   0.8 },
+    "tim":        { "k_w_mk":   5.0 },
+    "interposer": { "k_w_mk": 150.0 }
+  },
+  "regions": [
+    { "name": "interposer", "material": "interposer", "z_um": [0.0, 100.0] },
+    { "name": "mold_fill",  "material": "mold",       "z_um": [100.0, 400.0] },
+    { "name": "gpu_die", "material": "silicon", "x_um": [2100.0, 3900.0], "y_um": [2100.0, 3900.0], "z_um": [100.0, 400.0], "power_w_cm2": 400.0 },
+    { "name": "hbm_west",  "material": "hbm_stack", "x_um": [ 400.0, 1600.0], "y_um": [1800.0, 4200.0], "z_um": [100.0, 400.0], "power_w_cm2": 25.0 },
+    { "name": "hbm_east",  "material": "hbm_stack", "x_um": [4400.0, 5600.0], "y_um": [1800.0, 4200.0], "z_um": [100.0, 400.0], "power_w_cm2": 25.0 },
+    { "name": "hbm_south", "material": "hbm_stack", "x_um": [1800.0, 4200.0], "y_um": [ 400.0, 1600.0], "z_um": [100.0, 400.0], "power_w_cm2": 25.0 },
+    { "name": "hbm_north", "material": "hbm_stack", "x_um": [1800.0, 4200.0], "y_um": [4400.0, 5600.0], "z_um": [100.0, 400.0], "power_w_cm2": 25.0 },
+    { "name": "tim_layer", "material": "tim", "z_um": [400.0, 500.0] }
+  ],
+  "boundaries": {
+    "z_high": { "type": "robin", "h_w_m2k": 5.0e4, "t_inf_c": 40.0 },
+    "z_low": { "type": "adiabatic" },
+    "x_low": { "type": "adiabatic" }, "x_high": { "type": "adiabatic" },
+    "y_low": { "type": "adiabatic" }, "y_high": { "type": "adiabatic" }
+  }
+}

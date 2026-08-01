@@ -42,3 +42,4 @@ directory_structure.txt
 *~
 python/legacy/
 clean_repo.sh
+*.vti
