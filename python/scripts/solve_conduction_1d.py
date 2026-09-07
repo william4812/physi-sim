@@ -2,11 +2,92 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+"""1D TRANSIENT conduction: rho*cp dT/dt = d/dx(k dT/dx) + q.
+Fully implicit (backward Euler). Reuses the steady Gauss-Seidel solver as
+the INNER solve at each time step; the outer loop marches in time.
+"""
+def run_1_D_transient_conduction(L=0.5, k=1000.0, q_val=0.0, nx=5, TA=100, TB=500, rho=1000.0, cp=1000.0, T_initial=273.15, dt=0.1, n_steps=10000, theta=1.0):
+
+    Tabs0 = 273.15 # K
+    qDot = np.ones(nx) * q_val # W/m^3
+    dx = L / nx #m
+    x = np.arange(nx) * dx + 0.5 * dx#m
+    T_old = np.ones(nx) * 250 + 273.15 # K
+    T_new = np.ones(nx) * 250 + 273.15 # K
+
+    # Boundary conditions
+    T0 = TA + Tabs0 # K
+    TL = TB + Tabs0 # K
+
+    plt.figure("1D Transient Conduction Evolution", figsize=(10, 6))
+    plot_interval = max(1, n_steps // 200)
+
+    for step in range(n_steps):
+        # --- PASS 1: update the whole field (your Gauss-Seidel sweep) ---
+
+        # Boundary condition at x = 0
+        i = 0
+        aE = k / dx 
+        aW = 2 * k / dx
+        aP = rho * cp * dx / dt + (aW + aE) * theta
+        aP0 = rho * cp * dx / dt - (aW + aE) * (1-theta)
+        #print(f"i={i}, aE={aE}, aW={aW}, aP={aP}, qDot[i]={qDot[i]}, dx={dx}")
+        T_new[i] = (aP0 * T_old[i] + \
+                    aE * (theta*T_new[i+1] + (1-theta)*T_old[i+1]) + \
+                    aW * T0 + \
+                    qDot[i] * dx ) / aP
+        
+        for i in range(1, nx - 1):
+            aE = k / dx
+            aW = k / dx
+            aP = rho * cp * dx / dt + (aW + aE) * theta
+            aP0 = rho * cp * dx / dt - (aW + aE) * (1-theta)
+            #print(f"i={i}, aE={aE}, aW={aW}, aP={aP}, qDot[i]={qDot[i]}, dx={dx}")
+            T_new[i] = ( aP0 * T_old[i] + \
+                        aE * (theta*T_new[i+1] + (1-theta)*T_old[i+1]) + \
+                        aW * (theta*T_new[i-1] + (1-theta)*T_old[i-1]) + 
+                        qDot[i] * dx ) / aP
+   
+        # Boundary condition at x = L
+        i = nx - 1
+        aE = 2 * k / dx
+        aW = k / dx
+        aP = rho * cp * dx / dt + (aW + aE) * theta
+        aP0 = rho * cp * dx / dt - (aW + aE) * (1-theta)
+        #print(f"i={i}, aE={aE}, aW={aW}, aP={aP}, qDot[i]={qDot[i]}, dx={dx}")
+        T_new[i] = (aP0 * T_old[i] + \
+                    aE * TL + \
+                    aW * (theta*T_new[i-1] + (1-theta)*T_old[i-1]) + 
+                    qDot[i] * dx ) / aP
+
+
+
+        # Plot time snapshots with a clean alpha gradient (early = light, late = dark)
+        if step % plot_interval == 0:
+            alpha_val = 0.5 + 0.5 * (step / n_steps)
+            full_x = np.concatenate(([0.0], x, [L]))
+            full_T = np.concatenate(([T0], T_new, [TL]))
+            plt.plot(full_x, full_T, linestyle='--', color='blue', alpha=alpha_val, linewidth=4)
+
+        T_old[:] = T_new[:]
+
+    # Final steady state verification line
+    full_x = np.concatenate(([0.0], x, [L]))
+    full_T = np.concatenate(([T0], T_new, [TL]))
+    plt.plot(full_x, full_T, linestyle='-', linewidth=5, color='red', label='T(x) - Final Transient ($t \\to \\infty$)')
+    
+    plt.xlabel('x (m)', fontsize=20)
+    plt.ylabel('T (K)', fontsize=20)
+    plt.title('Transient Conduction (Backward Euler, $\\theta=1.0$)', fontsize=20)
+    plt.grid(True)
+    plt.legend(frameon=False, loc='upper left')
+    plt.tight_layout()
+
 
 """
-    This function solves the 1D conduction problem using the finite difference method.
-    It iteratively updates the temperature field until convergence is achieved.
-    """
+This function solves the 1D conduction problem using the finite difference method.
+It iteratively updates the temperature field until convergence is achieved.
+"""
 def run_1_D_numerical_conduction(L=0.5, k=1000.0,q_val = 0.0, nx=5, TA = 100, TB = 500):
     
     Tabs0 = 273.15 # K
@@ -204,12 +285,17 @@ def run_1_D_conduction_uniform_heat_generation():
     #plt.show()
 
 
+
+
+
 # This is a standard function you define yourself
 def main():
 
-    run_1_D_conduction_no_heat_generation()
+    #run_1_D_conduction_no_heat_generation()
 
-    run_1_D_conduction_uniform_heat_generation()
+    #run_1_D_conduction_uniform_heat_generation()
+
+    run_1_D_transient_conduction()
 
     plt.show()  # Show all plots at once
 
