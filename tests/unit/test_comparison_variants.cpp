@@ -25,7 +25,6 @@ namespace
 constexpr int    N   = 60;       // small enough to be fast, big enough to be real
 constexpr double TOL = 5e-4;     // absolute L-inf, same as the exporter
 constexpr int    CAP = 20000;
-constexpr double AGREE = 5e-3;   // cross-variant field agreement
 
 core::Grid2D fresh() 
 {
@@ -101,6 +100,10 @@ TEST(ComparisonVariants, JacobiCPUandTDMACPUAgree)
 }
 
 #ifdef PHYSI_SIM_CUDA_ENABLED
+namespace 
+{
+constexpr double AGREE = 5e-3;   // cross-variant field agreement
+}
 TEST(ComparisonVariants, JacobiGPUNoVramMatchesCPU) 
 {
     int dev = 0; cudaGetDeviceCount(&dev);
