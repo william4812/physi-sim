@@ -1,6 +1,8 @@
 # ---- build directories (all variants) ----
-build*/
 .deps/
+build/
+build-*/
+*.txt
 
 # ---- compiled / build artifacts ----
 *.o
@@ -46,3 +48,4 @@ clean_repo.sh
 venv/
 __pycache__/
 *.pyc
+Shell_Loop_Script_Result.txt

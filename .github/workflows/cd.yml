@@ -21,9 +21,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake g++ gfortran libgtest-dev
-          cmake --preset hpc-release
-          cmake --build --preset hpc-release -j$(nproc)
-
+          cmake --preset llvm-release
+          cmake --build --preset llvm-release -j$(nproc)
+      
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:

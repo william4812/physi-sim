@@ -15,11 +15,13 @@ jobs:
       matrix:
         # One name drives configure + build + test (same name in all three
         # preset namespaces).
-        #   hpc-release = optimized + hardened (also what CD ships)
-        #   hpc-debug   = -O0 -g, bounds-checked: gfortran -fcheck=all on the
-        #                 kernels + libstdc++ _GLIBCXX_ASSERTIONS on C++ access,
-        #                 so an out-of-bounds index in the residual path is caught.
-        preset: [ hpc-release, hpc-debug ]
+        #   llvm-release = LLVM Release (Native tuned)
+        #   llvm-debug   = LLVM Debug (-O0 -g)
+        #   gnc-release  = GNC Release (x86-64-v3 + Hardened) - also what CD ships
+        #   gnc-debug    = GNC Debug, bounds-checked: gfortran -fcheck=all on the
+        #                  kernels + libstdc++ _GLIBCXX_ASSERTIONS on C++ access,
+        #                  so an out-of-bounds index in the residual path is caught.
+        preset: [llvm-release, llvm-debug, gnc-release, gnc-debug]
 
     steps:
       - name: Checkout Code
