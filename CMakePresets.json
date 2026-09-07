@@ -3,6 +3,34 @@
   "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
   "configurePresets": [
     {
+      "name": "llvm-release",
+      "displayName": "LLVM Release (Clang + LLD)",
+      "description": "High-performance release build using LLVM Clang compiler and LLD linker.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-llvm",
+      "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Release",
+          "CMAKE_C_COMPILER": "clang",
+          "CMAKE_CXX_COMPILER": "clang++",
+          "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
+          "CMAKE_CXX_FLAGS": "-O3 -march=native -fstack-protector-strong"
+      }
+    },
+    {
+      "name": "llvm-debug",
+      "displayName": "LLVM Debug (Clang + LLD)",
+      "description": "Debug build with symbols, frame pointers, and LLD linker using LLVM Clang.",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-llvm-debug",
+      "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Debug",
+          "CMAKE_C_COMPILER": "clang-17",
+          "CMAKE_CXX_COMPILER": "clang++-17",
+          "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
+          "CMAKE_CXX_FLAGS": "-O0 -g -fno-omit-frame-pointer -fstack-protector-strong"
+      }
+    },
+    {
       "name": "hpc-release",
       "displayName": "HPC Release (portable x86-64-v3 + hardening)",
       "description": "Optimized, hardened build for distribution and CI. Portable across modern x86-64 CPUs (no -march=native). Strict warnings live on the project's own targets, not here, so FetchContent deps (googletest, nlohmann/json) don't trip -Werror.",
@@ -31,10 +59,14 @@
     }
   ],
   "buildPresets": [
+    { "name": "llvm-release", "displayName": "Build LLVM Release", "configurePreset": "llvm-release" },
+    { "name": "llvm-debug", "displayName": "Build LLVM Debug", "configurePreset": "llvm-debug" },
     { "name": "hpc-release", "displayName": "Build HPC Release",     "configurePreset": "hpc-release" },
     { "name": "hpc-debug",   "displayName": "Build HPC Debug (GDB)", "configurePreset": "hpc-debug"   }
   ],
   "testPresets": [
+    { "name": "llvm-release", "displayName": "Test LLVM Release", "configurePreset": "llvm-release", "execution": { "output": { "short": true, "outputOnFailure": true }, "stopOnFailure": false} },
+    { "name": "llvm-debug", "displayName": "Test LLVM Debug", "configurePreset": "llvm-debug", "execution": { "output": { "short": true, "outputOnFailure": true }, "stopOnFailure": false} },
     { "name": "hpc-release", "displayName": "Run tests (HPC Release)", "configurePreset": "hpc-release", "output": { "outputOnFailure": true } },
     { "name": "hpc-debug",   "displayName": "Run tests (Debug)",       "configurePreset": "hpc-debug",   "output": { "outputOnFailure": true } }
   ]
