@@ -8,7 +8,7 @@ namespace core
 {
 
 Grid2D::Grid2D(int nx, int ny) 
-    : nx_(nx), ny_(ny), data_(static_cast<size_t>(nx) * ny, 0.0) 
+    : nx_(nx), ny_(ny), data_(static_cast<std::size_t>(nx) * static_cast<std::size_t>(ny), 0.0) 
 {
     if (nx <= 0 || ny <= 0) 
     {

@@ -64,17 +64,29 @@ def run_1_D_transient_conduction(L=0.5, k=1000.0, q_val=0.0, nx=5, TA=100, TB=50
 
         # Plot time snapshots with a clean alpha gradient (early = light, late = dark)
         if step % plot_interval == 0:
-            alpha_val = 0.5 + 0.5 * (step / n_steps)
+            alpha_val = 0.3 + 0.6 * (step / n_steps)
+            # markers ONLY at cell centers = the real solved DATA
+            plt.plot(x, T_new, linestyle='none', marker='o', markersize=7,
+                     color='blue', alpha=alpha_val)
+            # thin line = interpolation guide (no data, just visual)
             full_x = np.concatenate(([0.0], x, [L]))
             full_T = np.concatenate(([T0], T_new, [TL]))
-            plt.plot(full_x, full_T, linestyle='--', color='blue', alpha=alpha_val, linewidth=4)
+            plt.plot(full_x, full_T, linestyle='--', color='blue',
+                      alpha=alpha_val*0.5, linewidth=1)
 
+        # update for next time step
         T_old[:] = T_new[:]
 
     # Final steady state verification line
     full_x = np.concatenate(([0.0], x, [L]))
     full_T = np.concatenate(([T0], T_new, [TL]))
-    plt.plot(full_x, full_T, linestyle='-', linewidth=5, color='red', label='T(x) - Final Transient ($t \\to \\infty$)')
+    # markers = data, line = guide, with honest legend labels
+    plt.plot(x, T_new, linestyle='none', marker='s', markersize=11, color='red',
+             label='Numerical cell values (data)', zorder=5)
+    plt.plot(full_x, full_T, linestyle='-', linewidth=2, color='red', alpha=0.5, 
+             label='Interpolation / BC extrapolation (guide)')
+    plt.plot([0.0, L], [T0, TL], linestyle='none', marker='^', markersize=12, 
+             color='black', label='Dirichlet boundaries (imposed)', zorder=6)
     
     plt.xlabel('x (m)', fontsize=20)
     plt.ylabel('T (K)', fontsize=20)

@@ -41,6 +41,7 @@ static void check(cudaError_t e, const char* what) {
     if (e != cudaSuccess) { fprintf(stderr, "CUDA error (%s): %s\n", what, cudaGetErrorString(e)); exit(1); }
 }
 
+#ifdef GPU_LOAD_STANDALONE
 int main(int argc, char** argv) {
     const double seconds = (argc > 1) ? atof(argv[1]) : 30.0;
     const int N = 2048;                              // 2048^3 FLOPs per iter -> heavy
@@ -75,3 +76,4 @@ int main(int argc, char** argv) {
     cudaFree(dA); cudaFree(dB); cudaFree(dC);
     return 0;
 }
+#endif

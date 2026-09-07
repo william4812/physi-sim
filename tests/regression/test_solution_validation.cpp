@@ -9,9 +9,13 @@ double maxLaplaceResidual(const std::vector<double>& T, int nx, int ny) {
     double worst = 0.0;
     for (int j = 1; j < ny - 1; ++j)
         for (int i = 1; i < nx - 1; ++i) {
-            const double center    = T[j*nx + i];                       // column-major: [j*nx+i]
-            const double neighbors = T[j*nx + (i+1)] + T[j*nx + (i-1)]
-                                   + T[(j+1)*nx + i] + T[(j-1)*nx + i];
+            const std::size_t idx_center = static_cast<std::size_t>(j * nx + i);
+            
+            const double center = T[idx_center];                   // column-major: [j*nx+i]
+            const double neighbors = T[static_cast<std::size_t>(j * nx + (i + 1))] + 
+                         T[static_cast<std::size_t>(j * nx + (i - 1))] +
+                         T[static_cast<std::size_t>((j + 1) * nx + i)] + 
+                         T[static_cast<std::size_t>((j - 1) * nx + i)];
             worst = std::max(worst, std::abs(center - 0.25 * neighbors));
         }
     return worst;

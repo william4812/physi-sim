@@ -1,20 +1,25 @@
 # physi-sim/src/io/CMakeLists.txt
 
 add_library(io_component STATIC
+    ChipLayout.cpp
+    ConfigLoader.cpp
+    CSVWriter.cpp
     TelemetryWriter.cpp
     VTKWriter.cpp
-    CSVWriter.cpp
-    ConfigLoader.cpp
-    ChipLayout.cpp
 )
 
-# Use the standardized variable for clarity
-target_include_directories(io_component PUBLIC
-    ${CMAKE_SOURCE_DIR}/include
+# Propagate include paths transitively to dependent targets
+target_include_directories(io_component
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/include
 )
 
-# Crucial for Linux/Ubuntu: Link the filesystem library
+# Link JSON parsing target and foundational domain types
 target_link_libraries(io_component
-    PRIVATE nlohmann_json::nlohmann_json
-    PUBLIC stdc++fs
+    PRIVATE
+        nlohmann_json::nlohmann_json
+        core_logic
 )
+
+# Apply unified engineering profile (warnings, hardening, optimization flags)
+target_apply_engineering_defaults(io_component)

@@ -14,7 +14,8 @@ void JacobiCPU::step(core::Grid2D& grid)
     // Fortran laplace_2d_jacobi needs a separate output array.
     // Grid2D data is row-major: data[j*nx+i] = grid(i,j).
     // Fortran T(nx,ny) column-major accesses same offsets — no transpose needed.
-    std::vector<double> T_new(nx * ny);
+    //std::vector<double> T_new(nx * ny);
+    std::vector<double> T_new(static_cast<std::size_t>(nx) * static_cast<std::size_t>(ny));
 
     // laplace_2d_jacobi writes the INCREMENT residual ||T_new - T_old||_inf into
     // residual_ (see diffusion_kernel.f90 line 121): the cheap per-step stopping
@@ -23,8 +24,12 @@ void JacobiCPU::step(core::Grid2D& grid)
 
     // Copy result back — Fortran preserves boundary values in T_new
     for (int j = 1; j < ny - 1; ++j)
+    {
         for (int i = 1; i < nx - 1; ++i)
-            grid(i, j) = T_new[j * nx + i];
+        {
+            grid(i, j) = T_new[static_cast<std::size_t>(j) * static_cast<std::size_t>(nx) + static_cast<std::size_t>(i)];
+        }
+    }
 
 
     // Record the increment-vs-iteration curve. We deliberately do NOT compute

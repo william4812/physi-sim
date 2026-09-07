@@ -274,9 +274,9 @@ void run_solver_benchmark(const physi_sim::core::SimulationParams& params)
                             + "_convergence.csv";
                         std::ofstream f(fname);
                         f << "Iteration,Residual\n";
-                        for (int i = 0; i < (int)hist_ptr->size(); ++i)
+                        for (int i = 0; i < static_cast<int>(hist_ptr->size()); ++i)
                             f << i << ","
-                              << std::scientific << (*hist_ptr)[i] << "\n";
+                              << std::scientific << (*hist_ptr)[static_cast<std::size_t>(i)] << "\n";
                         std::cout << "  [IO] " << fname << "\n";
                     }
 

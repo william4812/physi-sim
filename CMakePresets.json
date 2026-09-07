@@ -1,73 +1,125 @@
 {
   "version": 3,
-  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
-  "configurePresets": [
+  "cmakeMinimumRequired": 
+  { 
+    "major": 3, 
+    "minor": 25, 
+    "patch": 0 
+  },
+  "configurePresets": 
+  [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-${presetName}",
+      "cacheVariables": 
+      {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "llvm-base",
+      "hidden": true,
+      "inherits": "base",
+      "environment": 
+      { 
+        "CC": "clang-17", 
+        "CXX": "clang++-17" 
+      },
+      "cacheVariables": { 
+        "CMAKE_CUDA_HOST_COMPILER": "clang++-17" 
+      }
+    },
+    {
+      "name": "gnc-base",
+      "hidden": true,
+      "inherits": "base",
+      "environment": { 
+        "CC": "gcc", 
+        "CXX": "g++", 
+        "FC": "gfortran" 
+      }
+    },
     {
       "name": "llvm-release",
-      "displayName": "LLVM Release (Clang + LLD)",
-      "description": "High-performance release build using LLVM Clang compiler and LLD linker.",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build-llvm",
-      "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "Release",
-          "CMAKE_C_COMPILER": "clang",
-          "CMAKE_CXX_COMPILER": "clang++",
-          "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
-          "CMAKE_CXX_FLAGS": "-O3 -march=native -fstack-protector-strong"
+      "displayName": "LLVM Release (Native tuned)",
+      "inherits": "llvm-base",
+      "cacheVariables": 
+      {
+        "CMAKE_BUILD_TYPE": "Release",
+        "PHYSI_SIM_MARCH": "native"
       }
     },
     {
       "name": "llvm-debug",
-      "displayName": "LLVM Debug (Clang + LLD)",
-      "description": "Debug build with symbols, frame pointers, and LLD linker using LLVM Clang.",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build-llvm-debug",
-      "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "Debug",
-          "CMAKE_C_COMPILER": "clang-17",
-          "CMAKE_CXX_COMPILER": "clang++-17",
-          "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
-          "CMAKE_CXX_FLAGS": "-O0 -g -fno-omit-frame-pointer -fstack-protector-strong"
+      "displayName": "LLVM Debug",
+      "inherits": "llvm-base",
+      "cacheVariables": { 
+        "CMAKE_BUILD_TYPE": "Debug" 
       }
-    },
-    {
-      "name": "hpc-release",
-      "displayName": "HPC Release (portable x86-64-v3 + hardening)",
-      "description": "Optimized, hardened build for distribution and CI. Portable across modern x86-64 CPUs (no -march=native). Strict warnings live on the project's own targets, not here, so FetchContent deps (googletest, nlohmann/json) don't trip -Werror.",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build",
-      "cacheVariables": {
+    },{
+      "name": "gnc-release",
+      "displayName": "GNC Release (x86-64-v3 + Hardened)",
+      "inherits": "gnc-base",
+      "cacheVariables": 
+      {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
-        "CMAKE_CXX_FLAGS": "-O3 -march=x86-64-v3 -fstack-protector-strong -D_FORTIFY_SOURCE=2",
-        "CMAKE_Fortran_FLAGS": "-O3 -march=x86-64-v3 -fstack-protector-strong",
-        "CMAKE_EXE_LINKER_FLAGS": "-Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -pie"
+        "PHYSI_SIM_MARCH": "x86-64-v3",
+        "PHYSI_SIM_ENABLE_HARDENING": "ON"
       }
-    },
-    {
-      "name": "hpc-debug",
-      "displayName": "HPC Debug (GDB-steppable, bounds-checked C++/Fortran)",
-      "description": "Unoptimized build for tracing the residual through diffusion_kernel.f90 -> JacobiCPU -> ProfilingHarness in GDB. Standalone (does NOT inherit hpc-release) so no -O3/-march leaks in and nothing reads as <optimized out>. C++ and Fortran are both -g -O0 so stepping descends through the extern \"C\" boundary into laplace_2d_jacobi; CUDA gets -G so cuda-gdb can enter the solve_vram kernels. Bounds-checked on BOTH sides: gfortran -fcheck=all on the kernels, libstdc++ -D_GLIBCXX_ASSERTIONS on C++ container access (cheap, GDB-friendly) so an out-of-bounds index that would silently corrupt a residual is caught. Builds into build-debug/ to match ./build-debug/physi_sim.",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build-debug",
-      "cacheVariables": {
+    },{
+      "name": "gnc-debug",
+      "displayName": "GNC Debug (Bounds checked)",
+      "inherits": "gnc-base",
+      "cacheVariables": 
+      {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_FLAGS": "-g -O0 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS",
-        "CMAKE_Fortran_FLAGS": "-g -O0 -fno-omit-frame-pointer -fcheck=all -fbacktrace",
-        "CMAKE_CUDA_FLAGS": "-g -G"
+        "PHYSI_SIM_ENABLE_ASSERTIONS": "ON"
       }
     }
   ],
-  "buildPresets": [
-    { "name": "llvm-release", "displayName": "Build LLVM Release", "configurePreset": "llvm-release" },
-    { "name": "llvm-debug", "displayName": "Build LLVM Debug", "configurePreset": "llvm-debug" },
-    { "name": "hpc-release", "displayName": "Build HPC Release",     "configurePreset": "hpc-release" },
-    { "name": "hpc-debug",   "displayName": "Build HPC Debug (GDB)", "configurePreset": "hpc-debug"   }
+  "buildPresets": 
+  [
+    { 
+      "name": "llvm-release", 
+      "configurePreset": "llvm-release" 
+    },{ 
+      "name": "llvm-debug",   
+      "configurePreset": "llvm-debug" 
+    },{ 
+      "name": "gnc-release",  
+      "configurePreset": "gnc-release" 
+    },{ 
+      "name": "gnc-debug",    
+      "configurePreset": "gnc-debug" 
+    }
   ],
-  "testPresets": [
-    { "name": "llvm-release", "displayName": "Test LLVM Release", "configurePreset": "llvm-release", "execution": { "output": { "short": true, "outputOnFailure": true }, "stopOnFailure": false} },
-    { "name": "llvm-debug", "displayName": "Test LLVM Debug", "configurePreset": "llvm-debug", "execution": { "output": { "short": true, "outputOnFailure": true }, "stopOnFailure": false} },
-    { "name": "hpc-release", "displayName": "Run tests (HPC Release)", "configurePreset": "hpc-release", "output": { "outputOnFailure": true } },
-    { "name": "hpc-debug",   "displayName": "Run tests (Debug)",       "configurePreset": "hpc-debug",   "output": { "outputOnFailure": true } }
+  "testPresets": 
+  [
+    {
+      "name": "llvm-release",
+      "displayName": "Run Tests (LLVM Release)",
+      "configurePreset": "llvm-release",
+      "execution": { "stopOnFailure": false, "outputOnFailure": true }
+    },
+    {
+      "name": "llvm-debug",
+      "displayName": "Run Tests (LLVM Debug)",
+      "configurePreset": "llvm-debug",
+      "execution": { "stopOnFailure": false, "outputOnFailure": true }
+    },
+    {
+      "name": "gnc-release",
+      "displayName": "Run Tests (GNC Release)",
+      "configurePreset": "gnc-release",
+      "execution": { "stopOnFailure": false, "outputOnFailure": true }
+    },
+    {
+      "name": "gnc-debug",
+      "displayName": "Run Tests (GNC Debug)",
+      "configurePreset": "gnc-debug",
+      "execution": { "stopOnFailure": false, "outputOnFailure": true }
+    }
   ]
 }

@@ -321,12 +321,12 @@ TEST(ThermalLadderL4, UniformSourceMatchesExactDiscreteSolution) {
                         kk, z * 1e3, numerical, exactDiscrete, err);
         }
 
-        for (std::size_t i = 0; i < n; ++i)
-            for (std::size_t j = 0; j < n; ++j)
+        for (std::size_t row = 0; row < n; ++row)
+            for (std::size_t col = 0; col < n; ++col)
                 for (std::size_t kk = 0; kk < n; ++kk) {
                     const double z = (static_cast<double>(kk) + 0.5) * dx;
                     const double exactDiscrete = q_v * z * (L - z) / (2.0 * k) + c;
-                    worst = std::max(worst, std::abs(T[flat(n, i, j, kk)] - exactDiscrete));
+                    worst = std::max(worst, std::abs(T[flat(n, row, col, kk)] - exactDiscrete));
                 }
         EXPECT_LT(worst, 1e-9)
             << "n=" << n << ": Linf = " << worst << " K against the exact discrete solution "

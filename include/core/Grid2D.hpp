@@ -17,31 +17,32 @@ public:
      */
     Grid2D(int nx, int ny);
 
-    // Standard accessors (implementation in .cpp)
+    // Standard accessors
     double& at(int x, int y);
     const double& at(int x, int y) const;
+    
     inline double& operator()(int x, int y) noexcept {
-        return data_[(y * nx_) + x];
+        return data_[get_index(x, y)];
+    }
+    
+    inline const double& operator()(int x, int y) const noexcept {
+        return data_[get_index(x, y)];
     }
 
     // Fast raw access for solvers/benchmarks
     double* get_raw_data() noexcept;
     const double* get_raw_data() const noexcept;
 
-    // 1. For initialization: Returns the actual vector object
     const std::vector<double>& get_raw_vector() const { return data_; }
 
-    // 2. For the Fortran Bridge: Returns the raw pointer to the memory
     double* data() { return data_.data(); }
     const double* data() const { return data_.data(); }
 
-    // 3. For the Ping-Pong Swap: Updates the internal buffer efficiently
     void update_data(const std::vector<double>& next_data) 
     {
-        data_ = next_data; // This performs a vector copy
+        data_ = next_data; 
     }
 
-    // Dimension getters - marked noexcept for compiler optimization
     int get_nx() const noexcept { return nx_; }
     int get_ny() const noexcept { return ny_; }
     size_t size() const noexcept { return data_.size(); }
@@ -51,11 +52,10 @@ private:
     int ny_;
     std::vector<double> data_;
 
-    // Flattening logic kept in header for inlining
-    // Index = (Row * Width) + Column
-    inline int get_index(int x, int y) const noexcept 
+    // Return std::size_t directly to match vector indexing and avoid sign-conversion warnings
+    inline std::size_t get_index(int x, int y) const noexcept 
     {
-        return (y * nx_) + x;
+        return (static_cast<std::size_t>(y) * static_cast<std::size_t>(nx_)) + static_cast<std::size_t>(x);
     }
 };
 

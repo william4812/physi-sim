@@ -30,8 +30,8 @@ public:
 
   ProfilingHarness(const ProfilingHarness&)            = delete;
   ProfilingHarness& operator=(const ProfilingHarness&) = delete;
-  ProfilingHarness(ProfilingHarness&&) noexcept            = default;
-  ProfilingHarness& operator=(ProfilingHarness&&) noexcept = default;
+  ProfilingHarness(ProfilingHarness&&) noexcept            = delete;
+  ProfilingHarness& operator=(ProfilingHarness&&) noexcept = delete;
 
   // run() drives IDLE→READY→RUNNING→CONVERGED|FAILED→IDLE.
   // rec.fsm_state is set before reset() — never empty after this call.

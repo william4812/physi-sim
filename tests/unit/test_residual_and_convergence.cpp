@@ -49,8 +49,13 @@ std::vector<double> jacobi_equation_history(int N, int steps) {
     core::Grid2D g = fresh(N);
     solver::JacobiCPU s;
     std::vector<double> hist;
-    hist.reserve(steps);
-    for (int k = 0; k < steps; ++k) {
+
+    // Ensure we reserve capacity safely
+    const auto u_steps = static_cast<size_t>(steps);
+    hist.reserve(u_steps);
+
+    // Fix: loop up to steps using a size_t counter (or cast k to size_t)
+    for (size_t k = 0; k < u_steps; ++k) {
         s.step(g);
         hist.push_back(core::laplace_residual_linf(g));
     }
@@ -178,8 +183,8 @@ TEST(Convergence, AsymptoticRateMatchesJacobiSpectralRadius) {
     const int lo = 25, hi = 60;
     double log_sum = 0.0; int count = 0;
     for (int k = lo; k < hi; ++k) {
-        if (h[k] > 0.0 && h[k + 1] > 0.0) {
-            log_sum += std::log(h[k + 1] / h[k]);
+        if (h[static_cast<size_t>(k)] > 0.0 && h[static_cast<size_t>(k + 1)] > 0.0) {
+            log_sum += std::log(h[static_cast<size_t>(k + 1)] / h[static_cast<size_t>(k)]);
             ++count;
         }
     }

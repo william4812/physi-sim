@@ -80,8 +80,8 @@ TEST(FortranBackendTest, SteadyStateLinearProfileTest)
     solver.compute_steady(grid, k, T_L, T_R);
 
     const double slope = (T_R - T_L) / (n - 1);
-    for (int i = 0; i < n; ++i) {
-        const double expected_T = T_L + i * slope;
+    for (std::size_t i = 0; i < static_cast<std::size_t>(n); ++i) {
+        const double expected_T = T_L + static_cast<double>(i) * slope;
         EXPECT_NEAR(grid[i], expected_T, 1e-9)
             << "Physical violation at node " << i
             << ": Non-linear profile detected.";

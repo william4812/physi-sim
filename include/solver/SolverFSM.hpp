@@ -51,8 +51,8 @@ public:
  
   SolverFSM(const SolverFSM&)               = delete;
   SolverFSM& operator=(const SolverFSM&)    = delete;
-  SolverFSM(SolverFSM&&) noexcept           = default;
-  SolverFSM& operator=(SolverFSM&&) noexcept = default;
+  SolverFSM(SolverFSM&&) noexcept           = delete;
+  SolverFSM& operator=(SolverFSM&&) noexcept = delete;
 
   // Events
   void prepare();

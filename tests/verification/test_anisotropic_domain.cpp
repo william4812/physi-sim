@@ -35,7 +35,7 @@ TEST(AnisotropicDomain, LinearProfileExactOnNonCubicGrid) {
     s.solveThermal([](double,double,double){return 150.0;}, b, src, T, SOLVE_TOL);
     const double dz=Lz/nz; double worst=0.0;
     for(std::size_t i=0;i<nx;++i)for(std::size_t j=0;j<ny;++j)for(std::size_t k=0;k<nz;++k){
-        double z=(k+0.5)*dz, ex=Th-(Th-Tc)*z/Lz;
+        double z=(static_cast<double>(k)+0.5)*dz, ex=Th-(Th-Tc)*z/Lz;
         worst=std::max(worst,std::abs(T[ID(ny,nz,i,j,k)]-ex));
     }
     EXPECT_LT(worst,1e-8) << "non-cubic linear profile Linf=" << worst << " K";

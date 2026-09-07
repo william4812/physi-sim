@@ -23,7 +23,8 @@ double Solver2D::solve_laplace_jacobi(Grid2D& grid,
     int ny = grid.get_ny();
     
     // Create a secondary buffer for the "Ping-Pong" update
-    std::vector<double> next_data(nx * ny);
+    // Cast the product to std::size_t for vector allocation:
+std::vector<double> next_data(static_cast<std::size_t>(nx) * static_cast<std::size_t>(ny));
     // Initialize next_data with current grid values (to preserve boundaries)
     next_data = grid.get_raw_vector(); 
 

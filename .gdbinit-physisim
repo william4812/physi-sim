@@ -1,0 +1,104 @@
+# .gdbinit-physisim — guided walk of the thermal solve, input -> output.
+#
+# USAGE (from the repo root, after: cmake --build --preset hpc-debug):
+#   gdb -x .gdbinit-physisim --args ./build/bin/export_chip_stack chip_layout.json
+#
+# Then type 'run'. Execution halts at each stage boundary with a banner telling
+# you what just happened and what to inspect. The companion WALKTHROUGH.md
+# explains the first-principles meaning of each stop AND poses an interview-style
+# question at each -- answer it in your own words before continuing.
+#
+# If a breakpoint reports "Function not defined", the namespace or name differs
+# slightly in your build -- run 'info functions solveField' (etc.) to find the
+# exact symbol, then 'break <that symbol>'.
+
+set pagination off
+set print pretty on
+set print frame-arguments all
+
+# ---------------------------------------------------------------------------
+# STOP 1 -- INPUT BOUNDARY: the JSON text becomes a typed C++ struct.
+# ---------------------------------------------------------------------------
+break physi_sim::io::loadChipLayout
+commands
+  silent
+  printf "\n========================================================\n"
+  printf " STOP 1  loadChipLayout  (src/io/ChipLayout.cpp)\n"
+  printf " Raw chip_layout.json -> ChipLayout struct:\n"
+  printf " domain, materials, regions, boundary conditions.\n"
+  printf "--------------------------------------------------------\n"
+  printf " INTERVIEW Q: A config file has an unknown material name.\n"
+  printf " Where and when should that fail, and why there?\n"
+  printf "========================================================\n"
+  info args
+  printf "\n> 'next' a few times to watch the parse.\n"
+  printf "> 'finish' to return to main() holding the struct, then:\n"
+  printf ">   print layout.materials\n"
+  printf ">   print layout.regions.size()\n\n"
+end
+
+# ---------------------------------------------------------------------------
+# STOP 2 -- SAMPLING DONE, SOLVER ENTERED: geometry is now per-cell numbers.
+# ---------------------------------------------------------------------------
+break physi_sim::thermal3d::ElectroThermal3D::solveThermal
+commands
+  silent
+  printf "\n========================================================\n"
+  printf " STOP 2  solveThermal  (src/thermal3d/ElectroThermal3D.cpp)\n"
+  printf " Layout has been sampled at cell CENTRES into k[] and\n"
+  printf " q_v[]. Those + BCs now enter the solver. No physics yet.\n"
+  printf "--------------------------------------------------------\n"
+  printf " INTERVIEW Q: Why sample at cell CENTRES, not corners?\n"
+  printf " What property of the FV scheme does that preserve?\n"
+  printf "========================================================\n"
+  backtrace 2
+  printf "\n> 'continue' to reach the assembly + solve loop.\n\n"
+end
+
+# ---------------------------------------------------------------------------
+# STOP 3 -- THE HEART: assemble div(k grad T)+q_v=0 and iterate to converge.
+# ---------------------------------------------------------------------------
+break physi_sim::thermal3d::ElectroThermal3D::solveField
+commands
+  silent
+  printf "\n========================================================\n"
+  printf " STOP 3  solveField  (src/thermal3d/ElectroThermal3D.cpp)\n"
+  printf " THE PHYSICS. Per cell:\n"
+  printf "   diag * T_P = sum(G_face * T_neighbour) + q_v * Vol\n"
+  printf " G_face = HARMONIC MEAN of neighbour k's (two half-\n"
+  printf " cells in series). SOR relaxes the coupled set.\n"
+  printf "--------------------------------------------------------\n"
+  printf " INTERVIEW Q: Why the HARMONIC mean and not arithmetic?\n"
+  printf " What goes wrong at a Si|TIM interface if you use the\n"
+  printf " average? (This is THE question for this stop.)\n"
+  printf "========================================================\n"
+  printf "\n> Watch convergence live:\n"
+  printf ">   info line solveField\n"
+  printf ">   break ElectroThermal3D.cpp:<maxDelta update line>\n"
+  printf ">   continue        (print the delta each hit -> shrinks to tol)\n"
+  printf "> Inspect the assembly:\n"
+  printf ">   print omega     (SOR over-relaxation factor)\n"
+  printf ">   print gamma[0]  (a sampled conductivity)\n\n"
+end
+
+# ---------------------------------------------------------------------------
+# STOP 4 -- OUTPUT BOUNDARY: the solved field is serialized to .vti.
+# ---------------------------------------------------------------------------
+break physi_sim::io::VTKWriter::write_3d
+commands
+  silent
+  printf "\n========================================================\n"
+  printf " STOP 4  write_3d  (src/io/VTKWriter.cpp)\n"
+  printf " Answer exists. Cell-centred T -> .vti (CellData,\n"
+  printf " x-fastest order) for ParaView.\n"
+  printf "--------------------------------------------------------\n"
+  printf " INTERVIEW Q: Why CellData not PointData? What would\n"
+  printf " interpolating to points do to a Si|TIM gradient?\n"
+  printf "========================================================\n"
+  info args
+  printf "\n> 'continue' to finish. chip_stack.vti written on exit.\n\n"
+end
+
+printf "\n  Guided breakpoints armed (4 stops: input -> sample -> solve -> output).\n"
+printf "  Each stop poses an interview question -- answer it before continuing.\n"
+printf "  Type 'run' to begin.\n\n"
